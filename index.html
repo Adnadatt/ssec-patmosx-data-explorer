@@ -1,0 +1,1233 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>PATMOS-x Data Explorer -- SSEC</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+<style>
+
+    /* ── Base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+        --red:       #8e1b11;
+        --red-hover: #75150d;
+        --navy:      #253a6e;
+        --text:      #4a5568;
+        --text-2:    #1a1a1a;
+        --text-3:    #888;
+        --border:    #dde0e6;
+        --bg:        #f7f7f7;
+        --bg-side:   #f9f9fb;
+        --white:     #ffffff;
+        --radius:    4px;
+    }
+    body {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: Red Hat Text,"Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 20px;
+        background: var(--bg);
+        color: var(--text);
+    }
+
+    /* ── Title ─────────────────────────────────────────────────── */
+    .page-title {
+        padding: 12px 24px 12px;
+        border-bottom: 1px solid var(--border);
+        background: var(--white);
+    }
+    .page-title h1 {
+        font-size: 19px;
+        font-weight: 600;
+        color: var(--text-2);
+        letter-spacing: -.02em;
+    }
+    .page-title p {
+        font-size: 13px;
+        color: var(--text-3);
+        margin-top: 3px;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .page-body {
+        display: grid;
+        grid-template-columns: 270px 1fr;
+        gap: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+    
+
+    /* ── Sidebar ─────────────────────────────────────────────────── */
+    .sidebar {
+        background: var(--bg-side); 
+        border-right: 0.5px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    #sidebar-l2bc, #sidebar-l3 {
+        display: flex;
+        flex-direction: column;
+    }
+    .sidebar-section { border-bottom: 0.5px solid var(--border); }
+    .sidebar-section-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform:uppercase;
+        letter-spacing:.07em;
+        padding:10px 16px 6px;
+        display:flex;
+        align-items:center;
+        gap:6px
+    }
+    .sidebar-body { padding: 3px 16px 14px; }
+
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        margin-bottom: 4px;
+    }
+    select, input[type=date], input[type=number], input[type=text] {
+        width: 100%;
+        font-size: 13px;
+        padding: 6px 8px;
+        border: 1px solid #b0bac8;
+        border-radius: var(--radius);
+        background: var(--white);
+        color: #222;
+        appearance: auto;
+    }
+    select:focus, input[type=date]:focus {
+        outline: none;
+        border-color: var(--navy);
+        box-shadow: 0 0 0 2px rgba(37, 58, 110, .2);
+    }
+
+    /* ── Platform / Satellite ──────────────────────────────────────── */
+
+    .platform-row {
+        display: flex !important;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        gap: 15px;
+        padding: 5px 15px;
+        align-items: center;
+        font-size: 12px !important;
+        color: var(--text-2);
+    }
+    .platform-row:last-child { border-bottom: none; }
+    .platform-row:hover { background: #e0e4ee;}
+    .platform-row input[type=checkbox] {
+        width: 14px; height: 14px;
+        accent-color: var(--navy);
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+
+    .date-row { display: grid; flex-direction: column; min-width: 0; }
+
+    /* ── Boundixng box custom inputs ───────────────────────────────── */
+    .bbox-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 8px;
+    }
+    .bbox-grid .field { margin-bottom: 0; }
+    .bbox-custom {display: none; }
+    .bbox-custom.show { display: block; }      
+
+    /* ── Tabs ─────────────────────────────────────────────────────── */
+    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 0.5px solid var(--border); }
+    .tab {
+        font-size: 13px;
+        font-weight: 700;
+        padding: 10px 6px;
+        text-align: center;
+        cursor: pointer;
+        color: var(--text-3);
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        border-bottom: 2px solid transparent;
+        transition: .15s;
+        user-select: none;
+    }
+    .tab:hover { color: var(--text); background: #f0f1f4; }
+    .tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+    /* ── Chips ────────────────────────────────────────────────────── */
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+    .chip {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 2px;
+        border: 1px solid #b0bac8;
+        background: var(--white);
+        color: var(--text);
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        transition: .12s;
+        user-select: none;
+    }
+    .chip:hover { background: #e0e4ee; }
+    .chip.active { background: var(--navy); border-color: var(--navy); color: var(--white); }
+    .chip.disabled { opacity: .4; pointer-events: none; }
+
+    /* ── Toggle switch ────────────────────────────────────────────── */
+    .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #d1d1d1;
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-label { font-size: 12px; color: #333;}
+    .toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle input {opacity: 0; width: 0; height: 0; }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background: #b0bac8;
+        border-radius: 20px;
+        transition: .2s;
+    }
+    .slider::before {
+        content: "";
+        position: absolute;
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+        background: var(--white);
+        border-radius: 50%;
+        transition: .2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    }
+    .toggle input:checked + .slider { background: var(--red); }
+    .toggle input:checked + .slider::before { transform: translateX(16px); }
+
+    /* ── Plot Settings ────────────────────────────────────────────── */
+
+    .plot-settings {
+        background: var(--bg-side); border: 1px solid var(--border); 
+        padding: 10px 16px; gap: 24px; width: 100%;
+        display: flex; align-items: flex-start; justify-content: center; flex-wrap: wrap; 
+    }
+
+    .cmap-swatch { width:32px;height:18px;border-radius:3px;cursor:pointer; border: none; box-sizing: border-box; }
+    .cmap-swatch.active { border-color: var(--navy) !important; }
+
+    /* ── Generate Plots ───────────────────────────────────────────── */
+    .run-btn {
+        margin: 14px 14px 2px 14px; padding: 10px;
+        font-size: 12px; font-weight: 700; letter-spacing: .06em;
+        text-transform: uppercase;
+        color: var(--white); background: var(--red);
+        border: none; border-radius: var(--radius);
+        cursor: pointer; gap: 7px;
+        display: flex; align-items: center; justify-content: center;
+        transition: .15s; user-select: none;
+    }
+    .run-btn:hover { background: var(--red-hover); }
+    .run-btn:active { transform: scale(.98); }
+
+    .reset-btn {
+        margin: 5px 14px 2px 14px; padding: 8px 14px;
+        font-size: 12px; font-weight: 500; font-family: inherit;
+        color: var(--text-3); background: transparent;
+        border: 1px solid var(--border); border-radius: var(--radius);
+        cursor: pointer; transition: all .15s; user-select: none;
+    }
+
+    /* ── Main ─────────────────────────────────────────────────── */
+    .main-panel { display: flex; flex-direction: column; overflow: auto; background: var(--bg); }
+    .main-header {
+        background: var(--white); border-bottom: 1px solid var(--border);
+        padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .main-title { font-size: 13px; font-weight: 600; color: var(--text); }
+    .main-subtitle { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .status-pill {
+        font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+        border: 1px solid var(--border); background: var(--bg); color: var(--text-3);
+        letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+    }
+    .status-pill.running { background: #fff8e1; color: #b45309; border-color: #f0d080; }
+    .status-pill.done    { background: #edf7ee; color: #2a7a3b; border-color: #a0d0a8; }
+
+    .progress {padding: 10px 20px; background: var(--white); border-bottom: 1px solid var(--border); display: none; }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px;}
+    .progress-track { height: 4px; background: #e8eaef; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--red); border-radius: 4px; width: 0; transition: width .35s ease; }
+
+    #plot-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .empty-main {
+        flex: 1; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; padding: 100px 20px; gap: 14px; text-align: center;
+    }
+    .empty-icon {
+        width: 56px; height: 56px; border-radius: 50%; background: var(--white);
+        border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    }
+    .empty-icon i { font-size: 26px; color: #c0c6d4; }
+    .empty-main h3 { font-size: 15px; font-weight: 700; color: var(--text-2); }
+    .empty-main p  { font-size: 13px; color: var(--text-3); max-width: 280px; line-height: 1.6; }
+</style>
+</head>
+
+<body>
+    <div class="page-title" style="display: flex; flex-direction: row; align-items: center; gap: 15px;">
+        <img src="/static/ssec-logo.png" style="height: calc(40px + 1vw);" />
+        <span><h1>SSEC PATMOS-x Satellite Data Explorer</h1>
+        <p>Select a satellite, node, date range, and product to generate analysis plots.</p></span>
+    </div>
+<!-- Body: sidebar + main -->
+<div class="page-body">
+        
+
+<!-- SIDEBAR: selection & filters -->
+<aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-section">
+        <div class="tab-bar">
+            <div class="tab" onclick="setTab(this, 'l2bc')">level 2bc</div>
+            <div class="tab active" onclick="setTab(this, 'l3')">level 3</div>
+        </div>
+    </div>
+
+    <div id="sidebar-l2bc" style="display:none">
+        <!-- PRODUCT -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-cloud"></i>Product</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <select id="l2bc-product">
+                        <option value="">— select a variable —</option>
+                        <option value="cloud_fraction">Cloud Fraction</option>
+                        <option value="cld_press_acha">Cloud Top Pressure</option>
+                        <option value="cld_temp_acha">Cloud Top Temperature</option>
+                        <option value="cld_opd_dcom">Cloud Optical Depth</option>
+                        <option value="cld_reff_dcomp">Cloud Effective Radius</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLATFORM / INSTRUMENT -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" style="justify-content: space-between;">
+                <span style="display:flex; align-items:center; gap:6px;"><i class="ti ti-satellite"></i>Platform</span>
+                <button onclick="showTimeline()" style="font-size: 11px; color: var(--navy); background: #e8edf5; border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; font-weight: 600; text-transform:inherit;"><i class="ti ti-zoom-question"></i> timeline</button>
+            </div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <label>Satellite</label>
+
+                    
+                    <!-- <div id="platform-list" style="max-height: 180px; overflow-y: auto; border: 1px solid #b0bac8; border-radius: var(--radius); background: var(--white);">
+                        <div style="padding: 8px; font-size: 12px; color: var(--text-3);">Loading...</div>
+                    </div>
+                    <div style="margin-top: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <button onclick="selectAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Select All</button>
+                        <button onclick="clearAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Clear</button>
+                    </div> -->
+                
+                    <div id="l2bc-platform-list" style="max-height: 180px; overflow-y: auto; border: 1px solid #b0bac8; border-radius: var(--radius); background: var(--white);">
+                        <label class="platform-row"><input type="checkbox" value="METOP-A" /> METOP-A</label>
+                        <label class="platform-row"><input type="checkbox" value="METOP-B" /> METOP-B</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-06" /> NOAA-06</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-07" /> NOAA-07</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-08" /> NOAA-08</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-09" /> NOAA-09</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-10" /> NOAA-10</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-11" /> NOAA-11</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-12" /> NOAA-12</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-13" /> NOAA-13</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-14" /> NOAA-14</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-15" /> NOAA-15</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-16" /> NOAA-16</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-17" /> NOAA-17</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-18" /> NOAA-18</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-19" /> NOAA-19</label>
+                    </div>
+                    <div style="margin-top: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <button onclick="selectAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Select All</button>
+                        <button onclick="clearAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                
+                </div>
+            </div>
+        </div>
+
+        <!-- NODE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-arrows-up-down"></i>Node</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <div class="chips" id="l2bc-node-chips">
+                        <span class="chip active" onclick="setChip(this)" style="padding: 3px 7px; font-size: 10.8px;">Both</span>
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px; font-size: 10.8px;">Ascending</span>
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px; font-size: 10.8px;">Descending</span>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+        
+        <!-- Region -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-map-pin"></i>Region</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <label>Bounding Box</label>
+                    <select id="l2bc-bbox-select" onchange="onBboxChange(this, 'l2bc')">
+                        <option value="global">Global (180°W - 180°E, 90°S - 90°N)</option>
+                        <option value="namerica">North America</option>
+                        <option value="tropics">Tropics (180°W - 180°E, 30°S - 30°N)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <div class="bbox-custom" id="l2bc-bbox-custom">
+                    <div class="bbox-grid">
+                        <div class="field">
+                            <label>West Lon</label>
+                            <input type="number" id="l2bc-bbox-w" placeholder="-180" min="-180" max="180" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>East Lon</label>
+                            <input type="number" id="l2bc-bbox-e" placeholder="180" min="-180" max="180" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>South Lat</label>
+                            <input type="number" id="l2bc-bbox-s" placeholder="-90" min="-90" max="90" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>North Lat</label>
+                            <input type="number" id="l2bc-bbox-n" placeholder="90" min="-90" max="90" step="0.1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATE RANGE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-calendar-event"></i>Date Range</div>
+
+            <div class="sidebar-body">
+                <div class="field" style="margin-bottom: 12px;">
+                    <label>Temporal Resolution: daily</label>
+                </div>
+                <div class="date-row">
+                    <div class="field">
+                        <label>Start</label>
+                        <input type="date" id="l2bc-date-start" value="1980-01-24" min="1980-01-24">
+                    </div>
+                    <div class="field">
+                        <label>End</label>
+                        <input type="date" id="l2bc-date-end" value="2026-01-01" min="1980-01-24">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTERS -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-chart-dots"></i>Plots to Generate</div>
+
+            <div class="sidebar-body" style="padding-top: 6px;">
+                <div class="toggle-row">
+                    <span class="toggle-label">Mean Map</span>
+                    <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <span class="toggle-label">Mean Timeseries</span>
+                    <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <span class="toggle-label">Anomaly Timeseries</span>
+                    <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <span class="toggle-label">Histogram</span>
+                    <label class="toggle"><input type="checkbox" checked><span class="slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <button class="run-btn" onclick="loadPlot()">Generate Plot</button>
+        <button class="reset-btn" onclick="resetAll()">Reset parameters</button>
+    </div>
+
+    <div id="sidebar-l3">
+        <!-- PRODUCT -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-cloud"></i>Product</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <select id="l3-product">
+                        <option value="">— select a variable —</option>
+                        <option value="cloud_fraction">Cloud Fraction</option>
+                        <option value="cld_press_acha">Cloud Top Pressure</option>
+                        <option value="cld_temp_acha">Cloud Top Temperature</option>
+                        <option value="">Cloud Top Height</option>
+                        <option value="cld_opd_dcom">Cloud Optical Depth</option>
+                        <option value="cld_reff_dcomp">Cloud Effective Radius</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- CLOUD TYPE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-arrows-up-down"></i>Cloud Type</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <div class="chips" id="l3-cld-type-chips">
+                        <span class="chip active" onclick="setCldTypeChip(this, 'all')" style="padding: 3px 7px;">All</span>
+                        <span class="chip" onclick="setCldTypeChip(this, 'phase')" style="padding: 3px 7px;">Phase</span>
+                    </div>
+                    
+                    <div class="field" id="l3-cld-phase-options" style="margin-top: 10px; display: none;">
+                        <label>Select Phase(s)</label>
+                        <label class="platform-row"><input type="checkbox" value="water" checked> Water</label>
+                        <label class="platform-row"><input type="checkbox" value="supercooled_water"> Supercooled Water</label>
+                        <label class="platform-row"><input type="checkbox" value="ice"> Ice</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLATFORM / INSTRUMENT -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title" style="justify-content: space-between;">
+                <span style="display:flex; align-items:center; gap:6px;"><i class="ti ti-satellite"></i>Platform</span>
+                <button onclick="showTimeline()" style="font-size: 11px; color: var(--navy); background: #e8edf5; border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; font-weight: 600; text-transform:inherit;"><i class="ti ti-zoom-question"></i> timeline</button>
+            </div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <label>Satellite</label>
+                    <div id="l3-platform-list" style="max-height: 180px; overflow-y: auto; border: 1px solid #b0bac8; border-radius: var(--radius); background: var(--white);">
+                        <label class="platform-row"><input type="checkbox" value="METOP-A" /> METOP-A</label>
+                        <label class="platform-row"><input type="checkbox" value="METOP-B" /> METOP-B</label>
+                        <label class="platform-row"><input type="checkbox" value="METOP-C" /> METOP-C</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-06" /> NOAA-06</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-07" /> NOAA-07</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-08" /> NOAA-08</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-09" /> NOAA-09</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-10" /> NOAA-10</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-11" /> NOAA-11</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-12" /> NOAA-12</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-14" /> NOAA-14</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-15" /> NOAA-15</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-16" /> NOAA-16</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-17" /> NOAA-17</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-18" /> NOAA-18</label>
+                        <label class="platform-row"><input type="checkbox" value="NOAA-19" /> NOAA-19</label>
+                    </div>
+                    <div style="margin-top: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                        <button onclick="selectAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Select All</button>
+                        <button onclick="clearAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NODE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-arrows-up-down"></i>Node</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <div class="chips" id="l3-node-chips">
+                        <span class="chip active" onclick="setChip(this)" style="padding: 3px 7px; font-size: 10.8px;">Both</span>
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px; font-size: 10.8px;">Ascending</span>
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px; font-size: 10.8px;">Descending</span>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEWING ANGLE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-angle"></i>Viewing Angle</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <div class="chips" id="l3-viewing-angle">
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px; font-size: 9.3px;">Near Nadir Only</span>
+                        <span class="chip active" onclick="setChip(this)" style="padding: 3px 7px; font-size: 9.3px;">All Viewing Angles</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATE RANGE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-calendar-event"></i>Date Range</div>
+            
+            <div class="sidebar-body">
+                <div class="field" style="margin-bottom: 10px;">
+                    <label style="color: var(--text);">Temporal Resolution: monthly</label>
+                </div>
+                <div class="date-row">
+                    <div class="field">
+                        <label style="margin-bottom: 0px;">Start</label>
+                        <input type="month" id="l3-date-start" value="1980-01" min="1980-01">
+                    </div>
+                    <div class="field">
+                        <label style="margin-bottom: 0px;">End</label>
+                        <input type="month" id="l3-date-end" value="2026-01" min="1980-01">
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Region -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-map-pin"></i>Region</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <label>Bounding Box</label>
+                    <select id="l3-bbox-select" onchange="onBboxChange(this, 'l3')">
+                        <option value="global">Global (180°W - 180°E, 90°S - 90°N)</option>
+                        <option value="namerica">North America</option>
+                        <option value="tropics">Tropics (180°W - 180°E, 30°S - 30°N)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+
+                <div class="bbox-custom" id="l3-bbox-custom">
+                    <div class="bbox-grid">
+                        <div class="field">
+                            <label>West Lon</label>
+                            <input type="number" id="l3-bbox-w" placeholder="-180" min="-180" max="180" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>East Lon</label>
+                            <input type="number" id="l3-bbox-e" placeholder="180" min="-180" max="180" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>South Lat</label>
+                            <input type="number" id="l3-bbox-s" placeholder="-90" min="-90" max="90" step="0.1">
+                        </div>
+                        <div class="field">
+                            <label>North Lat</label>
+                            <input type="number" id="l3-bbox-n" placeholder="90" min="-90" max="90" step="0.1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SURFACE TYPE -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-world-map"></i>Surface Type</div>
+
+            <div class="sidebar-body">
+                <div class="field">
+                    <div class="chips" id="l3-surface-type-chips">
+                        <span class="chip active" onclick="setChip(this)" style="padding: 3px 7px;">All</span>
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px;">Land</span>
+                        <span class="chip" onclick="setChip(this)" style="padding: 3px 7px;">Ocean</span>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+
+        
+
+        <!-- PLOTS -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title"><i class="ti ti-chart-dots"></i>Plot to Generate</div>
+
+            <div class="sidebar-body" style="padding-top: 6px;">
+                <div class="toggle-row">
+                    <span class="toggle-label">Mean Map</span>
+                    <label class="toggle"><input type="radio" name="plot-type" value="meanmap" checked><span class="slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <span class="toggle-label">Timeseries</span>
+                    <label class="toggle"><input type="radio" name="plot-type" value="timeseries" ><span class="slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <span class="toggle-label">Trend Map</span>
+                    <label class="toggle"><input type="radio" name="plot-type" value="trendmap"><span class="slider"></span></label>
+                </div>
+
+                <div class="toggle-row">
+                    <span class="toggle-label">Histogram</span>
+                    <label class="toggle"><input type="radio" name="plot-type" value="histogram"><span class="slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <button class="run-btn" onclick="loadPlot()">Generate Plot</button>
+        <button class="reset-btn" onclick="resetAll()">Reset parameters</button>
+    </div>
+</aside>
+
+        
+
+    <!-- Plot Generation -->
+
+    <main class="main-panel">
+        <div class="main-header">
+            <div>
+                <div class="main-title" id="main-title">No product selected</div>
+                <div class="main-subtitle" id="main-subtitle">Configure the sidebar to generate plots</div>
+            </div>
+            <span class="status-pill" id="status-pill">Idle</span>
+        </div>
+
+        <div id="timeline-panel" style="display: none; margin: 20px; padding: 10px; background: var(--bg-side); border-radius: var(--radius); border:1px solid var(--border);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 15px;">
+                <span style="font-size: 16px; font-weight: 600; color: var(--text);">Satellite Active Timelines</span>
+                <button onclick="hideTimeline()" style="font-size: 13px; color: var(--text-2); background: white; border:1px solid var(--border); border-radius:var(--radius); padding: 3px 10px; cursor: pointer;"><i class="ti ti-x"></i> Close</button>
+            </div>
+            <img src="/static/satelliteTimeline.png" style="width:100%; border-radius:var(--radius); border:1px solid var(--border);">
+        </div>
+
+        <div class="progress" id="progress">
+            <div class="progress-meta">
+                <span id="progress-lbl">Initializing...</span>
+                <span id="progress-pct">0%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill"></div></div>
+        </div>
+
+        <div id="plot-panel">
+            <div class="empty-main" id="empty-main">
+                <div class="empty-icon"><i class="ti ti-satellite-off"></i></div>
+                <h3>No data loaded</h3>
+                <p>Choose satellites, a date range, region, and product from the panel on the left, then click <strong>Generate Plot</strong>.</p>
+            </div>
+
+            <div id="plot-card" style="display: none; justify-content: center; max-width: 1000px; width: 100%; margin: 0 auto; padding: 20px 0 0 0;">
+                
+                <!-- come back to develop this -->
+                <div class="plot-settings" id="l3-timeseries-settings">
+                    <div class="field">
+                        <label>Satellites — click to toggle</label>
+                        <div id="ts-platform-toggles" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;"></div>
+                    </div>
+
+                    <div class="field" style="margin-left: auto; align-self: flex-end;">
+                        <button onclick="downloadPlotData('timeseries')"
+                            style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
+                                border:1px solid var(--border); background:var(--white); color:var(--text-2);
+                                cursor:pointer; display:flex; align-items:center; gap:5px;">
+                            <i class="ti ti-download"></i> Download NetCDF
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="plot-area"></div>
+
+                <div class="plot-settings" id="l3-meanmap-settings">
+                    <div class="field">
+                        <label>Colormap</label>
+                        <div style="display: flex; gap: 5px;">
+                            <div class="cmap-swatch" data-cmap="bwr" title="Blue-White-Red" style="background:linear-gradient(to right,#0000ff, #5c5cff, #8a8aff, #babaff, #ffe8e8, #ffbaba, #ff8a8a, #ff5c5c, #ff0000)"></div>
+                            <div class="cmap-swatch" data-cmap="turbo" title="Turbo" style="background:linear-gradient(to right,#30123b, #4353c2, #438efd, #20c6df, #29eea0, #7cfe56, #c0f233, #f0cb3a, #fd8f28, #e94d0d)"></div>                 
+                            <div class="cmap-swatch active" data-cmap="viridis" title="Viridis" style="border:2px solid var(--navy);background:linear-gradient(to right,#440154,#31688e,#35b779,#fde725)"></div>
+                            <div class="cmap-swatch" data-cmap="magma" title="Magma" style="background:linear-gradient(to right,#000003, #110c31, #58157e, #7e2481, #a3307e, #c83d72, #e85461, #f97d5d, #fea873, #fbfcbf)"></div>
+                            <div class="cmap-swatch" data-cmap="managua" title="Managua" style="background:linear-gradient(to right,#ffcf67, #e2a258, #c77c4b, #a95a40, #853b39, #63293d, #4f2e59, #4c4984, #546dac, #6191c9, #70bae3, #80e7fe)"></div>
+                            <div class="cmap-swatch" data-cmap="gray_r" title="Gray (reverse)" style="background:linear-gradient(to right,#ffffff, #d1d1d1, #a2a2a2, #747474, #454545, #2e2e2e)"></div>
+                            <div class="cmap-swatch" data-cmap="gray" title="Gray" style="background-image:linear-gradient(to right,#000000,#525252,#969696,#d9d9d9,#ffffff)"></div>
+                        </div>
+                    </div>
+                    <div class="field" style="display: flex; flex-direction: column;">
+                        <label>Color Range</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label>Min</label>
+                            <input type="number" id="colorbar-min" min="0" max="1" step="0.01" value="0.00" onchange="rerenderMeanmap()" style="height: 20px;">
+                            <label>Max</label>
+                            <input type="number" id="colorbar-max" min="0" max="1" step="0.01" value="1.00" onchange="rerenderMeanmap()" style="height: 20px;">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Borders</label>
+                        <div class="chips" id="l3-borders">
+                            <div class="chip active" onclick="toggleBorder(this)">Coasts</div>
+                            <div class="chip" onclick="toggleBorder(this)">Countries</div>
+                            <div class="chip" onclick="toggleBorder(this)">States</div>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-left: auto; align-self: flex-end;">
+                        <button onclick="downloadPlotData('meanmap')"
+                            style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
+                                border:1px solid var(--border); background:var(--white); color:var(--text-2);
+                                cursor:pointer; display:flex; align-items:center; gap:5px;">
+                            <i class="ti ti-download"></i> Download NetCDF
+                        </button>
+                    </div>
+                </div>
+
+                <div id="plot-anom-overall"></div>
+                <div id="plot-anom-monthly"></div>
+            </div>
+        </div>
+    </main>
+    </div>
+    </body>
+
+
+    <script>
+
+    // Timeline  ───────────────────────────────────────────────────────────────────────
+
+    function showTimeline() {
+        document.getElementById('timeline-panel').style.display = 'block';
+        document.getElementById('plot-panel').style.display = 'none';
+        // document.getElementById('empty-main').style.display = 'none';
+    }
+
+    function hideTimeline() {
+        document.getElementById('timeline-panel').style.display = 'none';
+        document.getElementById('plot-panel').style.display = 'flex';
+        // document.getElementById('empty-main').style.display = 'flex';
+    }
+
+    // select all / clear ──────────────────────────────────────────────────────────────
+
+    function selectAllPlatforms() {
+        const listId = currentLvl === 'l2bc' ? '#l2bc-platform-list' : '#l3-platform-list';
+        document.querySelectorAll(`${listId} input`).forEach(cb => cb.checked = true);
+    }
+
+    function clearAllPlatforms() {
+        const listId = currentLvl === 'l2bc' ? '#l2bc-platform-list' : '#l3-platform-list';
+        document.querySelectorAll(`${listId} input`).forEach(cb => cb.checked = false);
+    }
+
+
+    // Single-select chip functionality ────────────────────────────────────────────────
+    function setChip(chp) {
+        chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+        chp.classList.add("active");
+    }
+
+    function setResChip(chp, res) {
+        chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+        chp.classList.add("active");
+
+        const nodeChips = document.querySelectorAll("#node-chips .chip");
+    }
+
+    function setCldTypeChip(chp, type) {
+        chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+        chp.classList.add("active");
+        document.getElementById('l3-cld-phase-options').style.display = type === 'phase' ? 'block' : 'none';
+    }
+
+    let currentLvl = 'l3';
+    function setTab(tab, level) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        document.getElementById('sidebar-l2bc').style.display = level === 'l2bc' ? '' : 'none';
+        document.getElementById('sidebar-l3').style.display  = level === 'l3' ? '' : 'none';
+
+        currentLvl = level;
+    }
+
+    function toggleBorder(chp) {
+        chp.classList.toggle('active');
+        rerenderMeanmap();
+    }
+
+    document.querySelectorAll('.cmap-swatch').forEach(swatch => {
+        swatch.addEventListener('click', () => {
+            document.querySelectorAll('.cmap-swatch').forEach(s => {
+                s.classList.remove('active');
+                s.style.border = 'none';
+            });
+            swatch.classList.add('active');
+            swatch.style.border = '2px solid var(--navy)';
+            rerenderMeanmap();
+        });
+    }); 
+    
+    // Bounding Box ─────────────────────────────────────────────────────────────────────
+    function onBboxChange(sel, lvl) {
+        const val = sel.value;
+        document.getElementById(`${lvl}-bbox-custom`).classList.toggle("show", val === "custom");
+    }
+
+    function getBbox(level) {
+        const val = document.getElementById(`${level}-bbox-select`).value;
+        if (val === "custom") {
+            return {    
+                w: document.getElementById(`${level}-bbox-w`).value || -180,
+                e: document.getElementById(`${level}-bbox-e`).value || 180,
+                s: document.getElementById(`${level}-bbox-s`).value || -90,
+                n: document.getElementById(`${level}-bbox-n`).value || 90,
+            };
+        }
+        const presets = {
+            global:   { w: -180, e: 180, s: -90, n: 90 },
+            namerica: { w: -170, e:  -50, s:  10, n: 75 },
+            tropics:  { w: -180, e: 180, s: -30, n: 30 },
+        };
+        return presets[val] || presets.global;
+    }
+
+    // Getters ──────────────────────────────────────────────────────────────────────────
+
+    function getL2bcProduct() {
+        return document.getElementById('l2bc-product').value;
+    }
+
+    function getL2bcPlatforms() {
+        return [...document.querySelectorAll('#l2bc-platform-list input:checked')].map(cb => cb.value);
+    }
+
+    function getL2bcNode() {
+        const active = document.querySelector('#l2bc-node-chips .chip.active');
+        if (!active) return null;
+        const t = active.textContent.trim();
+        if (t === 'Ascending') return 'asc';
+        if (t === 'Descending') return 'des';
+        if (t === 'Both') return 'both';
+        return null;
+    }
+
+    function getL2bcDateRange() {
+        return {
+            start: document.getElementById('l2bc-date-start').value,
+            end: document.getElementById('l2bc-date-end').value,
+        };
+    }
+
+    function getL3Product() {
+        return document.getElementById('l3-product').value;
+    }
+
+    function getL3Platforms() {
+        return [...document.querySelectorAll('#l3-platform-list input:checked')].map(cb => cb.value);
+    }
+
+    function getL3Node() {
+        const active = document.querySelector('#l3-node-chips .chip.active');
+        if (!active) return null;
+        const t = active.textContent.trim();
+        if (t === 'Ascending') return 'asc';
+        if (t === 'Descending') return 'des';
+        if (t === 'Both') return 'both';
+        return null;
+    }
+
+    function getL3DateRange() {
+        return {
+            start: document.getElementById('l3-date-start').value,
+            end: document.getElementById('l3-date-end').value,
+        };
+    }
+
+    function getL3SurfaceType() {
+        const active = document.querySelector('#l3-surface-type-chips .chip.active');
+        if(!active) return 'all';
+        const t = active.textContent.trim();
+        if (t === 'Land') return 'land';
+        if (t === 'Ocean') return 'ocean';
+        return 'all';
+    }
+
+    function getL3ViewingAngle() {
+        const active = document.querySelector('#l3-viewing-angle .chip.active');
+        if (!active) return 'all';
+        return active.textContent.trim().toLowerCase().includes('nadir') ? 'nadir' : 'all';
+    }
+
+    function getSelectedPlotType() {
+        const checked = document.querySelector('input[name=plot-type]:checked');
+        return checked ? checked.value : null;
+    }
+
+    function getActiveCmap() {
+        const active = document.querySelector('.cmap-swatch.active');
+        return active ? active.dataset.cmap : 'viridis';
+    }
+
+    function getActiveBorders() {
+        return [...document.querySelectorAll('#l3-borders .chip.active')].map(c => c.textContent.trim().toLowerCase());
+    }
+
+    function getMinColorRange() { return document.getElementById('colorbar-min').valueAsNumber; }
+    function getMaxColorRange() { return document.getElementById('colorbar-max').valueAsNumber; }
+    
+    let tsState = null;
+    function buildTsToggles(platforms, colors) {
+        const container = document.getElementById('ts-platform-toggles');
+        container.innerHTML = platforms.map(p => `
+            <button class="ts-toggle active" data-platform="${p}"
+                onclick="toggleTsPlatform(this)"
+                style="font-size:11px; font-weight:600; padding:3px 10px; border-radius:3px;
+                   border:2px solid ${colors[p]}; background:${colors[p]}; color:#fff;
+                   cursor:pointer; transition:.12s;">
+                ${p}
+            </button>
+        `).join('')
+    }
+    function toggleTsPlatform(btn) {
+        btn.classList.toggle('active');
+        const color = tsState.colors[btn.dataset.platform];
+        if (btn.classList.contains('active')) {
+            btn.style.background = color;
+            btn.style.color = '#fff'
+        } else {
+            btn.style.background = 'transparent';
+            btn.style.color = color;
+        }
+        rerenderTimeseries();
+    }
+
+    function downloadPlotData(plotType) {
+        const cacheKey = plotType === 'meanmap'
+            ? mapState?.cacheKey
+            : tsState?.cacheKey;
+
+        if (!cacheKey) {
+            alert('Generate a plot first');
+            return;
+        }
+
+        const params = new URLSearchParams({ cacheKey, plotType });
+        const a = document.createElement('a');
+        a.href = `/api/l3/download?${params}`;
+        a.download = `patmosx_${plotType}.nc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    // Plot Drawing ─────────────────────────────────────────────────────────────────────
+
+    async function loadPlot() {
+        document.getElementById('progress').style.display = 'block';
+        document.getElementById('timeline-panel').style.display = 'none';
+        document.getElementById('plot-card').style.display = 'none';
+        document.getElementById('empty-main').style.display = 'none';
+        document.getElementById('plot-area').innerHTML = '';
+
+        const pill = document.getElementById('status-pill');
+        pill.textContent = 'Running'
+        pill.className = 'status-pill running';
+
+        let url;
+        if (currentLvl === 'l2bc') {
+            const platform = getL2bcPlatforms();
+            const product = getL2bcProduct();
+            const node = getL2bcNode();
+            const { start, end } = getL2bcDateRange();
+            if (!product) { alert('Select a product.'); resetPill(); return; }
+            if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
+            if (!node) { alert('Select a node for L2BC.'); resetPill(); return; }
+            const bbox = getBbox('l2bc');
+            const params = new URLSearchParams({ product, platform, node, start, end, ...bbox });
+            url = `/api/l2bc/generate?${params}`;
+        } else {
+            const product = getL3Product();
+            if (!product) { alert('Select a product.'); resetPill(); return; }
+
+            const platform = getL3Platforms().join(',');
+            if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
+
+            const node = getL3Node();
+            if (!node) { alert('Select a node for L2BC.'); resetPill(); return; }
+
+            const angle = getL3ViewingAngle();
+            const { start, end } = getL3DateRange();
+            const bbox = getBbox('l3');
+            const surface = getL3SurfaceType();
+            const features = getActiveBorders().join(',');
+            const cmap = getActiveCmap();
+            const min = getMinColorRange();
+            const max = getMaxColorRange();
+            const plotType = getSelectedPlotType()
+
+            const params = new URLSearchParams({ product, platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap });
+            url = `/api/l3/generate?${params}`;
+        }
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            document.getElementById('progress').style.display = 'none';
+            if (data.error) {
+                alert(data.error);
+                resetPill();
+                document.getElementById('empty-main').style.display = 'flex';
+                return;
+            }
+            pill.textContent = 'Done'; 
+            pill.className = 'status-pill done';
+
+            document.getElementById('plot-card').style.display = 'grid';
+            if (data.plot_type === 'meanmap') {
+                document.getElementById('l3-meanmap-settings').style.display = 'flex';
+                document.getElementById('l3-timeseries-settings').style.display = 'none';
+                mapState = { cacheKey: data.cacheKey };
+                document.getElementById('plot-area').innerHTML = 
+                    `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+            } 
+            if (data.plot_type === 'timeseries') {
+                document.getElementById('l3-meanmap-settings').style.display = 'none';
+                document.getElementById('l3-timeseries-settings').style.display = 'flex';
+
+                tsState = { cacheKey: data.cacheKey, platforms: data.platforms, colors: data.colors };
+                buildTsToggles(data.platforms, data.colors);
+                setTsPlots(data);
+            }
+
+            
+        } catch (err) {
+            console.error(err);
+            alert('Server error - check the terminal.');
+            resetPill();
+        }
+    } 
+
+    function resetPill() {
+        document.getElementById('progress').style.display = 'none';
+        document.getElementById('status-pill').textContent = 'Idle';
+        document.getElementById('status-pill').className = 'status-pill';
+        document.getElementById('empty-main').style.display = 'flex';
+    }
+
+    function resetAll() {
+        // Product
+        document.getElementById('l2bc-product').value = '';
+        document.getElementById('l3-product').value = '';
+
+        // Cloud Type
+        resetChipGroup('#l3-cld-type-chips', 'All');
+        document.getElementById('l3-cld-phase-options').style.display = 'none';
+        document.querySelectorAll('#l3-cld-phase-options input').forEach(cb => {
+            cb.checked = cb.value === 'water';
+        });
+
+        // Platform
+        document.querySelectorAll('#l2bc-platform-list input').forEach(cb => cb.checked = false);
+        document.querySelectorAll('#l3-platform-list input').forEach(cb => cb.checked = false);
+
+        // Node
+        resetChipGroup('#l2bc-node-chips', 'Both');
+        resetChipGroup('#l3-node-chips', 'Both');
+
+        //Viewing Angle
+        resetChipGroup('#l3-viewing-angle', 'All Viewing Angles');
+
+        // Date Range
+        document.getElementById('l2bc-date-start').value = '1980-01-24';
+        document.getElementById('l2bc-date-end').value = '2026-01-01';
+        document.getElementById('l3-date-start').value = '1980-01';
+        document.getElementById('l3-date-end').value = '2026-01';
+
+        // Region
+        document.getElementById('l2bc-bbox-select').value = 'global';
+        document.getElementById('l3-bbox-select').value = 'global';
+        document.getElementById('l2bc-bbox-custom').classList.remove('show');
+        document.getElementById('l3-bbox-custom').classList.remove('show');
+        ['w', 'e', 's', 'n'].forEach(dir => {
+            document.getElementById(`l2bc-bbox-${dir}`).value = '';
+            document.getElementById(`l3-bbox-${dir}`).value = '';
+        });
+
+        // Surface Type
+        resetChipGroup('#l3-surface-type-chips', 'All');
+        
+        // Plot
+        const meanmapRadio = document.querySelector('input[name="plot-type"][value="meanmap"]');
+        if (meanmapRadio) meanmapRadio.checked = true;
+    }
+
+    // set default chip active, clear the rest
+    function resetChipGroup(containerSelector, defaultLabel) {
+        const container = document.querySelector(containerSelector);
+        if (!container) return;
+        container.querySelectorAll('.chip').forEach(c => {
+            c.classList.toggle('active', c.textContent.trim() === defaultLabel);
+        });
+    }
+
+    let mapState = null;
+    async function rerenderMeanmap() {
+        if (!mapState) return;
+
+        const cmap = getActiveCmap();
+        const min = document.getElementById('colorbar-min').value;
+        const max = document.getElementById('colorbar-max').value;
+        const features = getActiveBorders();
+
+        const params = new URLSearchParams({
+            cacheKey: mapState.cacheKey,
+            cmap, min, max,
+            features: features.join(',')
+        });
+
+        const res = await fetch(`/api/l3/rerender-meanmap?${params}`);
+        const data = await res.json();
+        if (data.error) { console.warn(data.error); return; }
+
+        document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+    }
+
+    async function rerenderTimeseries() {
+        if (!tsState) return;
+        const active = [...document.querySelectorAll('.ts-toggle.active')].map(b => b.dataset.platform);
+
+        const params = new URLSearchParams({
+            cacheKey: tsState.cacheKey,
+            platforms: active.join(','),
+        });
+        const res = await fetch(`/api/l3/rerender-timeseries?${params}`);
+        const data = await res.json();
+        if (data.error) { console.warn(data.error); return; }
+        setTsPlots(data);
+    }
+
+    function setTsPlots(data) {
+        document.getElementById('plot-area').innerHTML = `<img src="${data.img_mean}" style="max-width:100%; display:block;" />`;
+        document.getElementById('plot-anom-overall').innerHTML = `<img src="${data.img_anom_overall}" style="max-width:100%; display:block;" />`;
+        document.getElementById('plot-anom-monthly').innerHTML = `<img src="${data.img_anom_monthly}" style="max-width:100%; display:block;" />`;
+    }
+
+    </script>
+
+    </html>
