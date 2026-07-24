@@ -100,6 +100,7 @@ def bbox_indices(path, w, e, s, n):
     lon_idx = np.where((lon >= w) & (lon <= e))[0]
     return lat_idx, lon_idx
 
+# ───────── MEANMAP  ─────────────────────────────────────────────────
 def compute_meanmap(subset, product, bbox, nodes, surface='all', angle='all'):
     # returns (lat,lon,meanmap), no plotting, just data
     w,e,s,n = bbox
@@ -212,6 +213,10 @@ def build_meanmap_nc(cached):
     nc.close()
     return tmp.name
 
+def get_product_meta(product):
+    return PRODUCT_META.get(product, {'units':'unknown', 'long_name':product.replace('_',' ').title()})
+
+# ───────── TIMESERIES  ──────────────────────────────────────────────
 def compute_timeseries(subset, product, bbox, nodes, surface='all', angle='all'):
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
@@ -231,8 +236,37 @@ def compute_timeseries(subset, product, bbox, nodes, surface='all', angle='all')
             ts[platform] = {'dates':dates, 'values':values}
 
     # All_Satellites mean, avg across platforms per date
+    date_bucket = defaultdict(list)
+    for plat, data in ts.items():
+        for d, v in zip(data['dates'], data['values']):
+            date_bucket[d].append(v)
+    all_dates = sorted(date_bucket.keys())
+    all_values = [np.mean(date_bucket[d]) for d in all_dates]
+    all_series = pd.Series(all_values, index=pd.to_datetime(all_dates))
 
-    return ts;
+    overall_mean = float(all_series.mean())
+    monthly_mean = all_series.groupby(all_series.index.month).mean().to_dict()
+
+    # mean trendline (fitted once from All_Satellites, doesn't change)
+    x_num = (all_series.index - all_series.index[0]).days.values.astype(float)
+    coeffs = np.polyfit(x_num, all_values, 1)
+    trend = np.polyval(coeffs, x_num).tolist()
+    slope_per_decade = coeffs[0] * 365.25 * 10
+
+    # overall anomaly trendline
+
+    # monthly anomaly trendline
+
+    precomputed = {
+        'all_dates':          [d.isoformat() for d in all_dates],
+        'all_values':         all_values,
+        'trend':              trend,
+        'slope_per_decade':   slope_per_decade,
+        'overall_mean':       overall_mean,
+        'monthly_mean':       monthly_mean,          # {1: 0.68, 2: 0.66, ..., 12: 0.70}
+    }
+
+    return ts, precomputed
 
 
 LINE_COLOR = '#1a1a1a'  # dark neutral — overall trend line
@@ -256,7 +290,7 @@ SATELLITE_COLORS = [
     '#c2185b',  # dark pink/rose
 ]
 
-def render_timeseries(ts_data, product, active_platforms=None):
+def render_timeseries(ts_data, precomputed, product, active_platforms=None, show_trend_mean=True, show_trend_overall=True, show_trend_monthly=True, mean_range=None, overall_range=None, monthly_range=None):
     all_platforms = list(ts_data.keys())
     if active_platforms is None:
         active_platforms = all_platforms
@@ -267,109 +301,97 @@ def render_timeseries(ts_data, product, active_platforms=None):
         for i, s in enumerate(all_platforms)
     }
 
-    # COLLECT ACTIVE DATA ────────────────────────────────────
-    active_dates_flat, active_values_flat = [], []
-    for plat in active_platforms:
-        if plat in ts_data:
-            active_dates_flat.extend(ts_data[plat]['dates'])
-            active_values_flat.extend(ts_data[plat]['values'])
-    
-    if not active_dates_flat:
-        return None, None, satellite_colors
-    
-    overall_mean = np.mean(active_values_flat)
-
-    # monthly climatology (12 vals)
-    month_bucket = defaultdict(list)
-    for plat in active_platforms:
-        if plat not in ts_data:
-            continue
-        for date, val in zip(ts_data[plat]['dates'], ts_data[plat]['values']):
-            month_bucket[date.month].append(val)
-    clim = {m: np.mean(v) for m, v in month_bucket.items()}
-
-    # overall mean line
-    date_bucket = defaultdict(list)
-    for plat in active_platforms:
-        if plat not in ts_data:
-            continue
-        for date, val in zip(ts_data[plat]['dates'], ts_data[plat]['values']):
-            date_bucket[date].append(val)
-    mean_dates = sorted(date_bucket.keys())
-    mean_vals = [np.mean(date_bucket[d]) for d in mean_dates]
-    mean_dates_dt = pd.to_datetime(mean_dates)
-
-    # trendline
-    sorted_pairs = sorted(zip(active_dates_flat, active_values_flat))
-    trend_dates = pd.to_datetime([p[0] for p in sorted_pairs])
-    trend_values = [p[1] for p in sorted_pairs]
-    x_num = (trend_dates - trend_dates[0]).days.values.astype(float)
-    coeffs = np.polyfit(x_num, trend_values, 1)
-    trend = np.polyval(coeffs, x_num)
-    slope_per_decade = coeffs[0] * 365.25 * 10
+    all_dates_dt = pd.to_datetime(precomputed['all_dates'])
+    all_values = precomputed['all_values']
+    trend = precomputed['trend']
+    slope_per_decade = precomputed['slope_per_decade']
+    overall_mean = precomputed['overall_mean']
+    monthly_mean = {int(k): v for k, v in precomputed['monthly_mean'].items()}
 
     ylabel = product.replace('_', ' ').title()
 
     def make_fig():
         return plt.subplots(figsize=(10,3.2))
 
-    def platform_scatterplots(ax):
+    def platform_scatterplots(ax, y_fn):
         for plat in active_platforms:
             if plat not in ts_data:
                 continue
             color = satellite_colors[plat]
-            ax.scatter(pd.to_datetime(ts_data[plat]['dates']),
-            ts_data[plat]['values'],
-            color=color, s=10, alpha=0.55, label=plat, zorder=3)
+            ys = [y_fn(v, d) for v, d in zip(ts_data[plat]['values'], ts_data[plat]['dates'])]
+            ax.scatter(
+                pd.to_datetime(ts_data[plat]['dates']), ys,
+                color=color, s=10, alpha=0.55, label=plat.replace('_', '-'), zorder=3)
+            
 
     # PLOT 1: MEAN TIMESERIES ────────────────────────────────
     fig1, ax1 = make_fig()
-    platform_scatterplots(ax1)
-    ax1.plot(mean_dates_dt, mean_vals, color='#1a1a1a', linewidth=1.2,
-             label='Overall mean', zorder=4)
-    ax1.plot(trend_dates, trend, color='#8e1b11', linewidth=1.5, linestyle='--',
+    platform_scatterplots(ax1, lambda v, d: v)
+    ax1.plot(all_dates_dt, all_values, color='#1a1a1a', linewidth=1.2,
+             label='All Satellites', zorder=4)
+    if show_trend_mean:
+        ax1.plot(all_dates_dt, trend, color='#8e1b11', linewidth=1.5, linestyle='--',
              label=f'Trend ({slope_per_decade:+.4f}/decade)', zorder=5)
-    ax1.set_ylabel(ylabel)
-    ax1.set_title(f"Regional mean {ylabel}")
+    ax1.set_ylabel('Time')
+    ax1.set_ylabel(f'{ylabel} (%)')
+    ax1.set_title(f"PATMOS-x Regional Mean {ylabel}", fontweight='bold')
+    if mean_range is not None:
+        ax1.set_ylim(mean_range[0], mean_range[1])
     ax1.legend(fontsize=8, ncol=min(5, len(active_platforms) + 2),
                loc='upper left', framealpha=0.7)
     ax1.grid(alpha=0.2)
+    ax1.set_axisbelow(True)
     fig1.tight_layout()
     img1 = fig_to_b64(fig1)
 
     # PLOT 2: ANOMALY TIMESERIES, OVERALL ────────────────────
+    all_anom = [v - overall_mean for v in all_values]
     fig2, ax2 = make_fig()
-    for plat in active_platforms:
-        if plat not in ts_data:
-            continue
-        color = satellite_colors[plat]
-        anom = [v - overall_mean for v in ts_data[plat]['values']]
-        ax2.scatter(pd.to_datetime(ts_data[plat]['dates']), anom, 
-            color=color, s=10, alpha=0.55, label=plat, zorder=3)
-    ax2.axhline(0, color='#1a1a1a', linewidth=0.8, linestyle='--')
-    ax2.set_ylabel('Anomaly')
-    ax2.set_title(f"Anomaly vs. overall mean  (mean = {overall_mean:.3f})")
-    ax2.legend(fontsize=8, ncol=min(5, len(active_platforms)),
+    platform_scatterplots(ax2, lambda v, d: v - overall_mean)
+    ax2.plot(all_dates_dt, all_anom, 
+        color='#1a1a1a', linewidth=1.2, label='All Satellites', zorder=4)
+    if show_trend_overall:
+        anom_x = (all_dates_dt - all_dates_dt[0]).days.values.astype(float)
+        anom_coeffs = np.polyfit(anom_x, all_anom, 1)
+        anom_trend = np.polyval(anom_coeffs, anom_x)
+        anom_slope = anom_coeffs[0] * 365.25 * 10
+        ax2.plot(all_dates_dt, anom_trend, color='#8e1b11', linewidth=1.5, linestyle='--',
+             label=f'Trend ({anom_slope:+.4f}/decade)', zorder=5)
+    ax2.axhline(0, color='black', linewidth=0.8, linestyle='--')
+    ax2.set_xlabel('Time')
+    ax2.set_ylabel(f'{ylabel} Anomaly')
+    ax2.set_title(f"PATMOS-x {ylabel} Anomaly\n(Relative to the All-Satellites Entire Mean)")
+    if overall_range is not None:
+        ax2.set_ylim(overall_range[0], overall_range[1])
+    ax2.legend(fontsize=8, ncol=min(5, len(active_platforms) + 1),
                loc='upper left', framealpha=0.7)
     ax2.grid(alpha=0.2)
+    ax2.set_axisbelow(True)
     fig2.tight_layout()
     img2 = fig_to_b64(fig2)
 
-    # PLOT 3: ANOMALY TIMESERIES, MONTHLY ────────────────────
+    # PLOT 3: ANOMALY TIMESERIES, MONTHLY (deseasonalized) ────────────────────
+    all_deseas = [v - monthly_mean.get(d.month, overall_mean) for v, d in zip(all_values, all_dates_dt)]
     fig3, ax3 = make_fig()
-    for plat in active_platforms:
-        if plat not in ts_data:
-            continue
-        color = satellite_colors[plat]
-        anom = [v - clim.get(d.month, overall_mean) for d,v in zip(ts_data[plat]['dates'], ts_data[plat]['values'])]
-        ax3.scatter(pd.to_datetime(ts_data[plat]['dates']), anom, 
-            color=color, s=10, alpha=0.55, label=plat, zorder=3)
+    platform_scatterplots(ax3, lambda v, d: v - monthly_mean.get(pd.Timestamp(d).month, overall_mean))
+    ax3.plot(all_dates_dt, all_deseas, color='#1a1a1a', linewidth=1.2, label='All Satellites', zorder=4)
+    if show_trend_monthly:
+        deseas_x = (all_dates_dt - all_dates_dt[0]).days.values.astype(float)
+        deseas_coeffs = np.polyfit(deseas_x, all_deseas, 1) # [slope, intercept]
+        deseas_trend = np.polyval(deseas_coeffs, deseas_x)
+        deseas_slope = deseas_coeffs[0] * 365.25 * 10
+        ax3.plot(all_dates_dt, deseas_trend, color='#8e1b11', linewidth=1.5, linestyle='--',
+             label=f'Trend ({deseas_slope:+.4f}/decade)', zorder=5)
     ax3.axhline(0, color='#1a1a1a', linewidth=0.8, linestyle='--')
-    ax3.set_ylabel('Anomaly')
-    ax3.set_title(f"Anomaly vs. monthly mean")
-    ax3.legend(fontsize=8, ncol=min(5, len(active_platforms)),
+    ax3.set_xlabel('Time')
+    ax3.set_ylabel('Deseasonalized Anomaly')
+    ax3.set_title(f"PATMOS-x Deseasonalized {ylabel} Anomaly\n(Using the All-Satellites Monthly Climatology)")
+    if monthly_range is not None:
+        ax3.set_ylim(monthly_range[0], monthly_range[1])
+    ax3.legend(fontsize=8, ncol=min(5, len(active_platforms) + 1),
                loc='upper left', framealpha=0.7)
     ax3.grid(alpha=0.2)
+    ax3.set_axisbelow(True)
     fig3.tight_layout()
     img3 = fig_to_b64(fig3)
 
@@ -394,6 +416,7 @@ def plot_timeseries(subset, product, bbox, nodes, surface='all', angle='all'):
 def build_timeseries_nc(cached):
     """Write per-platform timeseries to a temp NetCDF file. Returns the file path."""
     ts_data = cached['ts_data']
+    precomp = cached['precomputed']
     product = cached['product']
     meta = get_product_meta(product)
 
@@ -420,7 +443,6 @@ def build_timeseries_nc(cached):
     v_time.long_name = 'Time'
     v_time[:] = date_nums
 
-
     # build per platform arrays, keep them to compute all-sat mean
     platform_arrays = {}
     for plat, data in ts_data.items():
@@ -436,15 +458,10 @@ def build_timeseries_nc(cached):
         v.units      = meta['units']   # cloud fraction is dimensionless
         v[:] = arr
 
-    # compute All_Satellites mean (avg across platforms at each date)
-    stacked = np.stack(list(platform_arrays.values()), axis=0) # (n_platforms, n_times)
-    all_mean = np.nanmean(stacked, axis=0).astype(np.float32)
-    all_mean[np.all(np.isnan(stacked), axis=0)] = np.nan # keep NaN where ALL platforms are missing
-
     v_all = nc.createVariable('All_Satellites', 'f4', ('time',), fill_value=np.nan)
     v_all.long_name = f'All satellite mean {meta["long_name"]}'
     v_all.units = meta['units']
-    v_all[:] = all_mean
+    v_all[:] = np.array(precomp['all_values'], dtype=np.float32)
 
     nc.close()
     return tmp.name
@@ -457,5 +474,108 @@ PRODUCT_META = {
     'cld_reff_dcomp':   {'units': 'um',  'long_name': 'Cloud Effective Radius'},
 }
 
-def get_product_meta(product):
-    return PRODUCT_META.get(product, {'units':'unknown', 'long_name':product.replace('_',' ').title()})
+# ───────── TRENDMAP  ────────────────────────────────────────────────
+def compute_trendmap(subset, product, bbox, nodes, surface='all', angle='all'):
+    w,e,s,n = bbox
+    lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
+
+    # accumulate data per (lat,lon,time)
+    dates = []
+    grids = [] # list of 2D arrays, one per month
+
+    for _, row in subset.iterrows():
+        lat,lon,v = read_l3_file(row['path'], nodes, surface, angle, lat_idx, lon_idx)
+        dates.append(row['date'])
+        grids.append(v.filled(np.nan))
+
+    dates = pd.to_datetime(dates)
+    n_times = len(dates)
+    nlat, nlon = grids[0].shape
+    data = np.stack(grids, axis=0) # (n_times, nlat, nlon)
+
+    # monthly climatology per cell, mean for each month
+    monthly_clim = np.full((12, nlat, nlon), np.nan)
+    for m in range(1, 13):
+        mask = dates.month == m
+        if mask.any():
+            monthly_clim[m - 1] = np.nanmean(data[mask], axis=0)
+
+    # deseasonalize
+    deseason = np.full_like(data, np.nan)
+    for t in range(n_times):
+        m = dates[t].month
+        deseason[t] = data[t] - monthly_clim[m - 1]
+
+    # linear fit trend per cell (units/day)
+    x = (dates - dates[0]).days.values.astype(float) # gets number of days
+    x_mean = x.mean()
+    x_var = ((x - x_mean) ** 2).sum()
+
+    y = deseason
+    y_mean = np.nanmean(y, axis=0)
+    cov = np.nansum((x[:, None, None] - x_mean) * (y - y_mean[None]), axis=0)
+    slope_per_day = cov / x_var
+    slope_per_decade = slope_per_day * 365.25 * 10
+
+    # mask cells with too few valid observations
+    valid_count = np.sum(np.isfinite(deseason), axis=0)
+    slope_per_decade = np.ma.masked_where(valid_count < 3, slope_per_decade)
+
+    return lat, lon, slope_per_decade
+
+def render_trendmap(lat, lon, slope, subset, product, bbox, cmap="bwr", vrange=None, features=None):
+    import math
+    
+    # symmetric colorbar centered at 0
+    if vrange is not None:
+        vmin, vmax = vrange
+    else:
+        abs_max = float (np.nanmax(np.abs(slope)))
+        if abs_max == 0 or np.isnan(abs_max):
+            abs_max = 0.01
+        vmax = abs_max
+        vmin = -abs_max
+
+    meta = get_product_meta(product)
+    unit = meta['units']
+    ylabel = f'Trend ({unit}/decade)' if unit not in ('1', 'unknown') else 'Trend (per decade)'
+
+    fig = plt.figure(figsize=(10, 4.5))
+    ax = plt.axes(projection=ccrs.PlateCarree())
+    ax.set_extent([bbox[0], bbox[1], bbox[2], bbox[3]], crs=ccrs.PlateCarree())
+    im = ax.pcolormesh(lon, lat, slope, vmin=vmin, vmax=vmax, transform=ccrs.PlateCarree(), cmap=cmap)
+
+    if features is None:
+            features = []
+    for feature in features:
+        if feature in FEATURE_MAP:
+            ax.add_feature(FEATURE_MAP[feature])
+
+    plt.colorbar(im, ax=ax, label=ylabel, shrink=0.8)
+
+    # cols of platforms on the left
+    sat_list = subset['platform'].unique()
+    if len(sat_list) <= 8:
+        sat_text = "\n".join(sorted(sat_list))
+        fig.text(0.02,0.5,sat_text,ha='left',va='center',fontsize=11)
+        plt.subplots_adjust(left=0.1)
+    if len(sat_list) > 8:
+        ncol = 2
+        nrows = math.ceil(len(sat_list)/ncol)
+        cols = []
+        for i in range(ncol):
+            col = sat_list[i*nrows:(i+1)*nrows]
+            cols.append(col)
+        lines = []
+        for r in range(nrows):
+            left = cols[0][r] if r < len(cols[0]) else ""
+            right = cols[1][r] if r < len(cols[1]) else ""
+            lines.append(f"{left:<9} {right}")
+        sat_text = "\n".join(lines)
+        fig.text(0.02,0.5,sat_text,family='monospace',fontsize=11,va='center')
+        plt.subplots_adjust(left=0.19)
+            
+    date_range = f"{subset['date'].min().strftime('%Y-%m')} - {subset['date'].max().strftime('%Y-%m')}"
+    ax.set_title(f"Deseasonalized trend: {product.replace('_', ' ').title()}\n{date_range}")
+
+    return fig_to_b64(fig)
