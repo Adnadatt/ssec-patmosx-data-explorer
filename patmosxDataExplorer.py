@@ -145,6 +145,10 @@ async def l3_generate(request):
     s = float(request.args.get('s', -90))
     n = float(request.args.get('n', 90))
 
+    cloud_mode = request.args.get('cloud_mode', 'all')
+    cloud_phases_raw = request.args.get('cloud_phases', '')
+    phases = [p for p in cloud_phases_raw.split(',') if p] if cloud_mode == 'phase' else None
+ 
     if not platforms:
         return sanic_json({'error': 'Select at least one platform.'}, status=400)
     
@@ -153,14 +157,14 @@ async def l3_generate(request):
         return sanic_json({'error': 'No files found for those parameters.'}, status=404)
 
     bbox = (w, e, s, n)
-    cache_key = make_cache_key(product, platforms, start, end, nodes, surface, angle, bbox)
+    cache_key = make_cache_key(product, phases, platforms, start, end, nodes, surface, angle, bbox)
 
     loop = asyncio.get_event_loop()
 
     if plot_type == 'meanmap':
         mm_cache = request.app.ctx.meanmap_cache
         if cache_key not in mm_cache:
-            lat, lon, meanmap = await loop.run_in_executor(None, l3_utils.compute_meanmap, subset, product, bbox, nodes, surface, angle)
+            lat, lon, meanmap = await loop.run_in_executor(None, l3_utils.compute_meanmap, subset, product, bbox, nodes, phases, surface, angle)
             mm_cache[cache_key] = {"lat":lat, "lon":lon, "meanmap":meanmap, "subset":subset, "product":product, "bbox":bbox}
         cached = mm_cache[cache_key]
         img = await loop.run_in_executor(None, l3_utils.render_meanmap, cached["lat"], cached["lon"], cached["meanmap"], cached["subset"], cached["product"], cached["bbox"], cmap, min, max, features)
@@ -175,7 +179,7 @@ async def l3_generate(request):
 
         ts_cache = request.app.ctx.timeseries_cache
         if cache_key not in ts_cache:
-            ts_data, precomputed = await loop.run_in_executor(None, l3_utils.compute_timeseries, subset, product, bbox, nodes, surface, angle)
+            ts_data, precomputed = await loop.run_in_executor(None, l3_utils.compute_timeseries, subset, product, bbox, nodes, phases, surface, angle)
             ts_cache[cache_key] = {'ts_data': ts_data, 'precomputed': precomputed, 'product': product}
         cached = ts_cache[cache_key]
         img1, img2, img3, colors = await loop.run_in_executor(None, l3_utils.render_timeseries, cached['ts_data'], cached['precomputed'], cached['product'], None, True, True, True, mean_range, overall_range, monthly_range)
@@ -184,7 +188,7 @@ async def l3_generate(request):
         trend_range = parse_range(request, 'min', 'max')
         tm_cache = request.app.ctx.trendmap_cache
         if cache_key not in tm_cache:
-            lat, lon, slope = await loop.run_in_executor(None, l3_utils.compute_trendmap, subset, product, bbox, nodes, surface, angle)
+            lat, lon, slope = await loop.run_in_executor(None, l3_utils.compute_trendmap, subset, product, bbox, nodes, phases, surface, angle)
             tm_cache[cache_key] = {'lat': lat, 'lon': lon, 'slope': slope,
                                     'subset': subset, 'product': product, 'bbox': bbox}
         cached = tm_cache[cache_key]
@@ -254,9 +258,10 @@ def parse_range(request, min_key, max_key):
     except ValueError:
         return None
     
-def make_cache_key(product, platforms, start, end, nodes, surface, angle, bbox):
+def make_cache_key(product, phases, platforms, start, end, nodes, surface, angle, bbox):
+    phase_str = ','.join(sorted(phases)) if phases else 'all'
     return '|'.join([
-        product, ','.join(sorted(platforms)), str(start), str(end),
+        product, phase_str, ','.join(sorted(platforms)), str(start), str(end),
         ','.join(nodes), surface, angle, ','.join(str(x) for x in bbox)
     ])
 
