@@ -233,6 +233,11 @@
     .cmap-swatch { width:32px;height:18px;border-radius:3px;cursor:pointer; border: none; box-sizing: border-box; }
     .cmap-swatch.active { border-color: var(--navy) !important; }
 
+    .timeseries-range { display: flex; flex-direction: column; gap: 8px; }
+    .timeseries-range > div { display: flex; align-items: center; gap: 8px; }
+    .timeseries-range label { width: 95px; white-space: nowrap; text-align: right; }
+    .timeseries-range input { height: 20px; width: 70px;}
+
     /* ── Generate Plots ───────────────────────────────────────────── */
     .run-btn {
         margin: 14px 14px 2px 14px; padding: 10px;
@@ -275,6 +280,16 @@
     .progress-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-bottom: 6px;}
     .progress-track { height: 4px; background: #e8eaef; border-radius: 4px; overflow: hidden; }
     .progress-fill { height: 100%; background: var(--red); border-radius: 4px; width: 0; transition: width .35s ease; }
+    .progress-fill.indeterminate {
+        width: 100%;
+        background: linear-gradient(90deg, var(--red) 0%, #c0392b 40%, var(--red) 60%, #c0392b 100%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite linear;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% center; }
+        100% { background-position: -200% center; }
+    }
 
     #plot-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .empty-main {
@@ -736,23 +751,79 @@
                 <p>Choose satellites, a date range, region, and product from the panel on the left, then click <strong>Generate Plot</strong>.</p>
             </div>
 
-            <div id="plot-card" style="display: none; justify-content: center; max-width: 1000px; width: 100%; margin: 0 auto; padding: 20px 0 0 0;">
-                
-                <!-- come back to develop this -->
-                <div class="plot-settings" id="l3-timeseries-settings">
-                    <div class="field">
+            <div id="plot-card" style="display:none; flex-direction:column; justify-content:center; max-width:1000px; width:100%; margin:0 auto; padding:20px 0 0 0;">                
+                <div class="plot-settings" id="l3-timeseries-settings" style="flex-direction:column; align-items:stretch; gap:0;">
+                    <div class="field" style="margin-bottom: 0;">
                         <label>Satellites — click to toggle</label>
                         <div id="ts-platform-toggles" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:4px;"></div>
                     </div>
 
-                    <div class="field" style="margin-left: auto; align-self: flex-end;">
+                    <div class="field" style="margin-bottom:0; display:flex; align-items:center; gap:16px;
+                                        border-top:1px solid var(--border); padding-top:10px; margin-top:10px; flex-wrap:nowrap;">
+
+                        <label style="white-space:nowrap; margin-bottom:0;">Trendlines</label>
+                        
+                        <div style="display:flex; align-items:center; gap:10px; flex:1;">
+                            <label style="font-size:11px; color:var(--text-3); display:flex; align-items:center; gap:8px; margin-bottom:0; white-space:nowrap; cursor:pointer;">
+                                Mean
+                                <label class="toggle"><input type="checkbox" id="toggle-trend-mean" onchange="rerenderTimeseries()" checked><span class="slider"></span></label>
+                            </label>
+                            <label style="font-size:11px; color:var(--text-3); display:flex; align-items:center; gap:8px; margin-bottom:0; white-space:nowrap; cursor:pointer;">
+                                Anomaly (overall)
+                                <label class="toggle"><input type="checkbox" id="toggle-trend-overall" onchange="rerenderTimeseries()" checked><span class="slider"></span></label>
+                            </label>
+                            <label style="font-size:11px; color:var(--text-3); display:flex; align-items:center; gap:8px; margin-bottom:0; white-space:nowrap; cursor:pointer;">
+                                Anomaly (monthly)
+                                <label class="toggle"><input type="checkbox" id="toggle-trend-monthly" onchange="rerenderTimeseries()" checked><span class="slider"></span></label>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-bottom:0; display:flex; align-items:center; gap:16px;
+                                        border-top:1px solid var(--border); padding-top:10px; margin-top:10px; flex-wrap:nowrap;">
+                        <label style="white-space:nowrap; margin-bottom:0;">Y-Axis Range</label>
+                        <!-- min max input boxes -->
+                         <div class="timeseries-range">
+                            <div>
+                                <label>Mean Min</label>
+                                <input type="number" id="mean-min" step="0.01" onchange="rerenderTimeseries()">
+                            </div>
+                            <div>
+                                <label>Mean Max</label>
+                                <input type="number" id="mean-max" step="0.01" onchange="rerenderTimeseries()">
+                            </div>
+                         </div>
+                         <div class="timeseries-range">
+                            <div>
+                                <label>Overall Min</label>
+                                <input type="number" id="overall-min" step="0.01" onchange="rerenderTimeseries()">
+                            </div>
+                            <div>
+                                <label>Overall Max</label>
+                                <input type="number" id="overall-max" step="0.01" onchange="rerenderTimeseries()">
+                            </div>
+                         </div>
+                         <div class="timeseries-range">
+                            <div>
+                                <label>Monthly Min</label>
+                                <input type="number" id="monthly-min" step="0.01" onchange="rerenderTimeseries()">
+                            </div>
+                            <div>
+                                <label>Monthly Max</label>
+                                <input type="number" id="monthly-max" step="0.01" onchange="rerenderTimeseries()">
+                            </div>
+                        </div>
+                        
                         <button onclick="downloadPlotData('timeseries')"
                             style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
                                 border:1px solid var(--border); background:var(--white); color:var(--text-2);
-                                cursor:pointer; display:flex; align-items:center; gap:5px;">
+                                cursor:pointer; display:flex; align-items:center; gap:5px; white-space:nowrap;
+                                flex-shrink:0; margin-left:auto;">
                             <i class="ti ti-download"></i> Download NetCDF
                         </button>
                     </div>
+
+                    
                 </div>
                 
                 <div id="plot-area"></div>
@@ -766,25 +837,28 @@
                             <div class="cmap-swatch active" data-cmap="viridis" title="Viridis" style="border:2px solid var(--navy);background:linear-gradient(to right,#440154,#31688e,#35b779,#fde725)"></div>
                             <div class="cmap-swatch" data-cmap="magma" title="Magma" style="background:linear-gradient(to right,#000003, #110c31, #58157e, #7e2481, #a3307e, #c83d72, #e85461, #f97d5d, #fea873, #fbfcbf)"></div>
                             <div class="cmap-swatch" data-cmap="managua" title="Managua" style="background:linear-gradient(to right,#ffcf67, #e2a258, #c77c4b, #a95a40, #853b39, #63293d, #4f2e59, #4c4984, #546dac, #6191c9, #70bae3, #80e7fe)"></div>
-                            <div class="cmap-swatch" data-cmap="gray_r" title="Gray (reverse)" style="background:linear-gradient(to right,#ffffff, #d1d1d1, #a2a2a2, #747474, #454545, #2e2e2e)"></div>
                             <div class="cmap-swatch" data-cmap="gray" title="Gray" style="background-image:linear-gradient(to right,#000000,#525252,#969696,#d9d9d9,#ffffff)"></div>
                         </div>
                     </div>
+                    <div class="field">
+                        <label>Reverse</label>
+                        <label class="toggle"><input type="checkbox" id="mean-cmap-reverse" onchange="rerenderMeanmap()"><span class="slider"></span></label>
+                    </div>
                     <div class="field" style="display: flex; flex-direction: column;">
                         <label>Color Range</label>
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="display: flex; gap: 8px;">
                             <label>Min</label>
-                            <input type="number" id="colorbar-min" min="0" max="1" step="0.01" value="0.00" onchange="rerenderMeanmap()" style="height: 20px;">
+                            <input type="number" id="mean-colorbar-min" min="0" max="1" step="0.01" value="0.00" onchange="rerenderMeanmap()" style="height: 20px;">
                             <label>Max</label>
-                            <input type="number" id="colorbar-max" min="0" max="1" step="0.01" value="1.00" onchange="rerenderMeanmap()" style="height: 20px;">
+                            <input type="number" id="mean-colorbar-max" min="0" max="1" step="0.01" value="1.00" onchange="rerenderMeanmap()" style="height: 20px;">
                         </div>
                     </div>
                     <div class="field">
                         <label>Borders</label>
-                        <div class="chips" id="l3-borders">
-                            <div class="chip active" onclick="toggleBorder(this)">Coasts</div>
-                            <div class="chip" onclick="toggleBorder(this)">Countries</div>
-                            <div class="chip" onclick="toggleBorder(this)">States</div>
+                        <div class="chips" id="l3-meanmap-borders">
+                            <div class="chip active" onclick="toggleBorder(this, rerenderMeanmap)">Coasts</div>
+                            <div class="chip" onclick="toggleBorder(this, rerenderMeanmap)">Countries</div>
+                            <div class="chip" onclick="toggleBorder(this, rerenderMeanmap)">States</div>
                         </div>
                     </div>
 
@@ -798,8 +872,53 @@
                     </div>
                 </div>
 
-                <div id="plot-anom-overall"></div>
-                <div id="plot-anom-monthly"></div>
+                <div class="plot-settings" id="l3-trendmap-settings">
+                    <div class="field">
+                        <label>Colormap</label>
+                        <div style="display: flex; gap: 5px;">
+                            <div class="cmap-swatch active" data-cmap="bwr" title="Blue-White-Red" style="border:2px solid var(--navy); background:linear-gradient(to right,#0000ff, #5c5cff, #8a8aff, #babaff, #ffe8e8, #ffbaba, #ff8a8a, #ff5c5c, #ff0000)"></div>
+                            <div class="cmap-swatch" data-cmap="RdBu" title="Red-Blue" style="background:linear-gradient(to right,#67001f, #b61f2e, #dc6e57, #f7b799, #fae7dc, #e1edf3, #a7d0e4, #529dc8, #246aae, #053061)"></div>
+                            <div class="cmap-swatch" data-cmap="coolwarm" title="Coolwarm" style="background-image:linear-gradient(to right,#3b4cc0, #5d7ce6, #82a6fb, #aac7fd, #cdd9ec, #ead4c8, #f7b89c, #f18d6f, #d95847, #b40426)"></div>
+                            <div class="cmap-swatch" data-cmap="PRGn" title="Purple-Green" style="background:linear-gradient(to right,#40004b, #793187, #a17ab2, #ceb5d7, #eee3ee, #e6f3e3, #b7e2b1, #69b76d, #217d3b, #00441b)"></div>                 
+                            <div class="cmap-swatch" data-cmap="BrBG" title="Brown-Blue-Green" style="background:linear-gradient(to right,#543005, #91560d, #c58e3d, #e7cf94, #f6eed9, #dbefec, #98d7cd, #44a299, #066b63, #003c30)"></div>
+                            <div class="cmap-swatch" data-cmap="PuOr" title="Purple-Orange" style="background:linear-gradient(to right,#7f3b08, #b75c07, #e68d23, #fdc57f, #fbead2, #e5e7f0, #bfbbda, #8a7eb3, #582e8c, #2d004b)"></div>
+                            
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Reverse</label>
+                        <label class="toggle"><input type="checkbox" id="trend-cmap-reverse" onchange="rerenderTrendmap()"><span class="slider"></span></label>
+                    </div>
+                    <div class="field" style="display: flex; flex-direction: column;">
+                        <label>Color Range</label>
+                        <div style="display: flex; gap: 8px;">
+                            <label>Min</label>
+                            <input type="number" id="trend-colorbar-min" step="0.01" placeholder="auto" onchange="rerenderTrendmap()" style="height: 20px; width: 70px;">
+                            <label>Max</label>
+                            <input type="number" id="trend-colorbar-max" step="0.01" placeholder="auto" onchange="rerenderTrendmap()" style="height: 20px; width: 70px;">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Borders</label>
+                        <div class="chips" id="l3-trendmap-borders">
+                            <div class="chip active" onclick="toggleBorder(this, rerenderTrendmap)">Coasts</div>
+                            <div class="chip" onclick="toggleBorder(this, rerenderTrendmap)">Countries</div>
+                            <div class="chip" onclick="toggleBorder(this, rerenderTrendmap)">States</div>
+                        </div>
+                    </div>
+
+                    <div class="field" style="margin-left: auto; align-self: flex-end;">
+                        <button onclick="downloadPlotData('trendmap')"
+                            style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
+                                border:1px solid var(--border); background:var(--white); color:var(--text-2);
+                                cursor:pointer; display:flex; align-items:center; gap:5px;">
+                            <i class="ti ti-download"></i> Download NetCDF
+                        </button>
+                    </div>
+                </div>
+
+                <div id="plot-overall"></div>
+                <div id="plot-monthly"></div>
             </div>
         </div>
     </main>
@@ -866,20 +985,23 @@
         currentLvl = level;
     }
 
-    function toggleBorder(chp) {
+    function toggleBorder(chp, rerenderFunc) {
         chp.classList.toggle('active');
-        rerenderMeanmap();
+        rerenderFunc();
     }
 
     document.querySelectorAll('.cmap-swatch').forEach(swatch => {
         swatch.addEventListener('click', () => {
-            document.querySelectorAll('.cmap-swatch').forEach(s => {
+            const container = swatch.closest('.plot-settings');
+            container.querySelectorAll('.cmap-swatch').forEach(s => {
                 s.classList.remove('active');
                 s.style.border = 'none';
             });
             swatch.classList.add('active');
             swatch.style.border = '2px solid var(--navy)';
-            rerenderMeanmap();
+
+            if (container.id === 'l3-meanmap-settings') rerenderMeanmap();
+            if (container.id === 'l3-trendmap-settings') rerenderTrendmap();
         });
     }); 
     
@@ -979,19 +1101,21 @@
         return checked ? checked.value : null;
     }
 
-    function getActiveCmap() {
-        const active = document.querySelector('.cmap-swatch.active');
-        return active ? active.dataset.cmap : 'viridis';
+    function getActiveCmap(containerId, reverseId= 'mean-cmap-reverse') {
+        const container = document.getElementById(containerId);
+        const active = container.querySelector('.cmap-swatch.active');
+        let cmap = active ? active.dataset.cmap : 'viridis';
+
+        const reverse = document.getElementById(reverseId).checked;
+        if (reverse) cmap += '_r';
+
+        return cmap;
     }
 
-    function getActiveBorders() {
-        return [...document.querySelectorAll('#l3-borders .chip.active')].map(c => c.textContent.trim().toLowerCase());
+    function getActiveBorders(containerId = 'l3-meanmap-borders') {
+        return [...document.querySelectorAll(`#${containerId} .chip.active`)].map(c => c.textContent.trim().toLowerCase());
     }
 
-    function getMinColorRange() { return document.getElementById('colorbar-min').valueAsNumber; }
-    function getMaxColorRange() { return document.getElementById('colorbar-max').valueAsNumber; }
-    
-    let tsState = null;
     function buildTsToggles(platforms, colors) {
         const container = document.getElementById('ts-platform-toggles');
         container.innerHTML = platforms.map(p => `
@@ -1017,17 +1141,19 @@
         rerenderTimeseries();
     }
 
-    function downloadPlotData(plotType) {
-        const cacheKey = plotType === 'meanmap'
-            ? mapState?.cacheKey
-            : tsState?.cacheKey;
+    // function timeseriesYaxis
 
-        if (!cacheKey) {
+    function downloadPlotData(plotType) {
+        const cache_key = plotType === 'meanmap' ? meanmapState?.cache_key
+            : plotType === 'timeseries' ? tsState?.cache_key
+            : trendmapState?.cache_key;
+
+        if (!cache_key) {
             alert('Generate a plot first');
             return;
         }
 
-        const params = new URLSearchParams({ cacheKey, plotType });
+        const params = new URLSearchParams({ cache_key, plotType });
         const a = document.createElement('a');
         a.href = `/api/l3/download?${params}`;
         a.download = `patmosx_${plotType}.nc`;
@@ -1036,10 +1162,26 @@
         document.body.removeChild(a);
     }
 
+
     // Plot Drawing ─────────────────────────────────────────────────────────────────────
 
-    async function loadPlot() {
+    let meanmapState = null;
+    let tsState = null;
+    let trendmapState = null;
+
+    function startProgress(label = 'Loading...') {
         document.getElementById('progress').style.display = 'block';
+        document.getElementById('progress-lbl').textContent = label;
+        document.getElementById('progress-pct').textContent = '';
+        document.querySelector('.progress-fill').classList.add('indeterminate');
+    }
+    function stopProgress() {
+        document.getElementById('progress').style.display = 'none';
+        document.querySelector('.progress-fill').classList.remove('indeterminate');
+    }
+
+    async function loadPlot() {
+        startProgress('Computing');
         document.getElementById('timeline-panel').style.display = 'none';
         document.getElementById('plot-card').style.display = 'none';
         document.getElementById('empty-main').style.display = 'none';
@@ -1076,10 +1218,19 @@
             const bbox = getBbox('l3');
             const surface = getL3SurfaceType();
             const features = getActiveBorders().join(',');
-            const cmap = getActiveCmap();
-            const min = getMinColorRange();
-            const max = getMaxColorRange();
-            const plotType = getSelectedPlotType()
+            
+            
+            const plotType = getSelectedPlotType();
+            let cmap, min, max;
+            if (plotType === 'trendmap') {
+                cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse')
+                min = document.getElementById('trend-colorbar-min').valueAsNumber;
+                max = document.getElementById('trend-colorbar-max').valueAsNumber;
+            } else {
+                cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse')
+                min = document.getElementById('mean-colorbar-min').valueAsNumber;
+                max = document.getElementById('mean-colorbar-max').valueAsNumber;
+            }
 
             const params = new URLSearchParams({ product, platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap });
             url = `/api/l3/generate?${params}`;
@@ -1088,7 +1239,7 @@
         try {
             const res = await fetch(url);
             const data = await res.json();
-            document.getElementById('progress').style.display = 'none';
+            stopProgress();
             if (data.error) {
                 alert(data.error);
                 resetPill();
@@ -1102,21 +1253,37 @@
             if (data.plot_type === 'meanmap') {
                 document.getElementById('l3-meanmap-settings').style.display = 'flex';
                 document.getElementById('l3-timeseries-settings').style.display = 'none';
-                mapState = { cacheKey: data.cacheKey };
+                document.getElementById('l3-trendmap-settings').style.display = 'none';
+                document.getElementById('plot-overall').style.display = 'none';
+                document.getElementById('plot-monthly').style.display = 'none';
+                meanmapState = { cache_key: data.cache_key };
                 document.getElementById('plot-area').innerHTML = 
                     `<img src="${data.img}" style="max-width:100%; display:block;" />`;
             } 
             if (data.plot_type === 'timeseries') {
                 document.getElementById('l3-meanmap-settings').style.display = 'none';
                 document.getElementById('l3-timeseries-settings').style.display = 'flex';
+                document.getElementById('l3-trendmap-settings').style.display = 'none';
+                document.getElementById('plot-monthly').style.display = 'flex';
+                document.getElementById('plot-overall').style.display = 'flex';
 
-                tsState = { cacheKey: data.cacheKey, platforms: data.platforms, colors: data.colors };
+                tsState = { cache_key: data.cache_key, platforms: data.platforms, colors: data.colors, show_trend: true, };
                 buildTsToggles(data.platforms, data.colors);
                 setTsPlots(data);
             }
-
+            if (data.plot_type === 'trendmap') {
+                document.getElementById('l3-meanmap-settings').style.display = 'none';
+                document.getElementById('l3-timeseries-settings').style.display = 'none';
+                document.getElementById('l3-trendmap-settings').style.display = 'flex';
+                document.getElementById('plot-overall').style.display = 'none';
+                document.getElementById('plot-monthly').style.display = 'none';
+                trendmapState = { cache_key: data.cache_key };
+                document.getElementById('plot-area').innerHTML = 
+                    `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+            }
             
         } catch (err) {
+            stopProgress();
             console.error(err);
             alert('Server error - check the terminal.');
             resetPill();
@@ -1124,6 +1291,7 @@
     } 
 
     function resetPill() {
+        stopProgress();
         document.getElementById('progress').style.display = 'none';
         document.getElementById('status-pill').textContent = 'Idle';
         document.getElementById('status-pill').className = 'status-pill';
@@ -1175,6 +1343,22 @@
         // Plot
         const meanmapRadio = document.querySelector('input[name="plot-type"][value="meanmap"]');
         if (meanmapRadio) meanmapRadio.checked = true;
+        document.getElementById('toggle-trend-mean').checked = true;
+        document.getElementById('toggle-trend-overall').checked = true;
+        document.getElementById('toggle-trend-monthly').checked = true;
+        ['mean-min','mean-max','overall-min','overall-max','monthly-min','monthly-max'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+
+        document.getElementById('plot-card').style.display = 'none';
+        document.getElementById('empty-main').style.display = 'flex';
+        document.getElementById('plot-area').innerHTML = '';
+        document.getElementById('plot-overall').innerHTML = '';
+        document.getElementById('plot-monthly').innerHTML = '';
+        document.getElementById('ts-platform-toggles').innerHTML = '';
+        meanmapState = null;
+        tsState  = null;
+        trendmapState = null;
     }
 
     // set default chip active, clear the rest
@@ -1186,17 +1370,16 @@
         });
     }
 
-    let mapState = null;
     async function rerenderMeanmap() {
-        if (!mapState) return;
+        if (!meanmapState) return;
 
-        const cmap = getActiveCmap();
-        const min = document.getElementById('colorbar-min').value;
-        const max = document.getElementById('colorbar-max').value;
-        const features = getActiveBorders();
+        const cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse');
+        const min = document.getElementById('mean-colorbar-min').value;
+        const max = document.getElementById('mean-colorbar-max').value;
+        const features = getActiveBorders('l3-meanmap-borders');
 
         const params = new URLSearchParams({
-            cacheKey: mapState.cacheKey,
+            cache_key: meanmapState.cache_key,
             cmap, min, max,
             features: features.join(',')
         });
@@ -1208,13 +1391,27 @@
         document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
     }
 
+    function getRangeValue(id) {
+        const el = document.getElementById(id);
+        return el.value === '' ? '' : el.valueAsNumber;
+    }
+
     async function rerenderTimeseries() {
         if (!tsState) return;
         const active = [...document.querySelectorAll('.ts-toggle.active')].map(b => b.dataset.platform);
 
         const params = new URLSearchParams({
-            cacheKey: tsState.cacheKey,
+            cache_key: tsState.cache_key,
             platforms: active.join(','),
+            show_trend_mean: document.getElementById('toggle-trend-mean').checked,
+            show_trend_overall: document.getElementById('toggle-trend-overall').checked,
+            show_trend_monthly: document.getElementById('toggle-trend-monthly').checked,
+            mean_min: getRangeValue('mean-min'),
+            mean_max: getRangeValue('mean-max'),
+            overall_min: getRangeValue('overall-min'),
+            overall_max: getRangeValue('overall-max'),
+            monthly_min: getRangeValue('monthly-min'),
+            monthly_max: getRangeValue('monthly-max'),
         });
         const res = await fetch(`/api/l3/rerender-timeseries?${params}`);
         const data = await res.json();
@@ -1224,8 +1421,29 @@
 
     function setTsPlots(data) {
         document.getElementById('plot-area').innerHTML = `<img src="${data.img_mean}" style="max-width:100%; display:block;" />`;
-        document.getElementById('plot-anom-overall').innerHTML = `<img src="${data.img_anom_overall}" style="max-width:100%; display:block;" />`;
-        document.getElementById('plot-anom-monthly').innerHTML = `<img src="${data.img_anom_monthly}" style="max-width:100%; display:block;" />`;
+        document.getElementById('plot-overall').innerHTML = `<img src="${data.img_overall}" style="max-width:100%; display:block;" />`;
+        document.getElementById('plot-monthly').innerHTML = `<img src="${data.img_monthly}" style="max-width:100%; display:block;" />`;
+    }
+
+    async function rerenderTrendmap() {
+        if (!trendmapState) return;
+
+        const cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse');
+        const min = document.getElementById('trend-colorbar-min').value;
+        const max = document.getElementById('trend-colorbar-max').value;
+        const features = getActiveBorders('l3-trendmap-borders');
+
+        const params = new URLSearchParams({
+            cache_key: trendmapState.cache_key,
+            cmap, min, max,
+            features: features.join(',')
+        });
+
+        const res = await fetch(`/api/l3/rerender-trendmap?${params}`);
+        const data = await res.json();
+        if (data.error) { console.warn(data.error); return; }
+
+        document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
     }
 
     </script>
