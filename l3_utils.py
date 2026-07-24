@@ -42,10 +42,10 @@ DIM_NODE = 5
 NODE_IDX = {'asc': 0, 'des': 1}
 SURFACE_IDX = {'ocean': 0, 'land': 1}
 ANGLE_IDX = {'nadir': 0, 'all': 1}
-CLOUDY_IDX = [1,2,3]
+PHASE_IDX = {'water':1, 'supercooled_water':2, 'ice':3}
 TOTAL_IDX = [0,1,2,3]
 
-def read_l3_file(path, nodes, surface='all', angle='all', lat_idx=None, lon_idx=None):
+def read_l3_file(path, nodes, phases=None, surface='all', angle='all', lat_idx=None, lon_idx=None):
     # reads a l3 netCDF file
     # returns (lat, lon, data_2d) - arrays optionally sliced to bbox
     with netCDF4.Dataset(path) as nc:
@@ -72,7 +72,8 @@ def read_l3_file(path, nodes, surface='all', angle='all', lat_idx=None, lon_idx=
         raw = raw.sum(axis=-1)
 
     total = raw[..., TOTAL_IDX].sum(axis=-1).astype(float)
-    cloudy = raw[..., CLOUDY_IDX].sum(axis=-1).astype(float)
+    cloudy_idx = [PHASE_IDX[p] for p in phases] if phases else list(PHASE_IDX.values())
+    cloudy = raw[..., cloudy_idx].sum(axis=-1).astype(float)
     with np.errstate(invalid='ignore', divide='ignore'):
         cf = np.where(total > 0, cloudy / total, np.nan)
     cf = np.ma.masked_invalid(cf)
@@ -101,7 +102,7 @@ def bbox_indices(path, w, e, s, n):
     return lat_idx, lon_idx
 
 # ───────── MEANMAP  ─────────────────────────────────────────────────
-def compute_meanmap(subset, product, bbox, nodes, surface='all', angle='all'):
+def compute_meanmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
     # returns (lat,lon,meanmap), no plotting, just data
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
@@ -109,7 +110,7 @@ def compute_meanmap(subset, product, bbox, nodes, surface='all', angle='all'):
     accumulator = None
     count = 0
     for _, row in subset.iterrows():
-        lat,lon,v = read_l3_file(row['path'], nodes, surface, angle, lat_idx, lon_idx)
+        lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx)
         if accumulator is None:
             accumulator = np.zeros(v.shape)
         accumulator += v.filled(0)
@@ -217,7 +218,7 @@ def get_product_meta(product):
     return PRODUCT_META.get(product, {'units':'unknown', 'long_name':product.replace('_',' ').title()})
 
 # ───────── TIMESERIES  ──────────────────────────────────────────────
-def compute_timeseries(subset, product, bbox, nodes, surface='all', angle='all'):
+def compute_timeseries(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
 
@@ -227,7 +228,7 @@ def compute_timeseries(subset, product, bbox, nodes, surface='all', angle='all')
         plat_rows = subset[subset['platform'] == platform]
         dates, values = [], []
         for _, row in plat_rows.iterrows():
-            _, _, v = read_l3_file(row['path'], nodes, surface, angle, lat_idx, lon_idx)
+            _, _, v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx)
             spatial_mean = float(np.ma.mean(v))
             if not np.isnan(spatial_mean):
                 dates.append(row['date'])
@@ -475,7 +476,7 @@ PRODUCT_META = {
 }
 
 # ───────── TRENDMAP  ────────────────────────────────────────────────
-def compute_trendmap(subset, product, bbox, nodes, surface='all', angle='all'):
+def compute_trendmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
 
@@ -484,7 +485,7 @@ def compute_trendmap(subset, product, bbox, nodes, surface='all', angle='all'):
     grids = [] # list of 2D arrays, one per month
 
     for _, row in subset.iterrows():
-        lat,lon,v = read_l3_file(row['path'], nodes, surface, angle, lat_idx, lon_idx)
+        lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx)
         dates.append(row['date'])
         grids.append(v.filled(np.nan))
 

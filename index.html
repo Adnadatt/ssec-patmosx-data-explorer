@@ -1060,6 +1060,17 @@
         return document.getElementById('l3-product').value;
     }
 
+    function getL3CloudType() {
+        const active = document.querySelector('#l3-cld-type-chips .chip.active')
+        const mode = active ? active.textContent.trim().toLowerCase() : 'all';
+
+        if (mode === 'all') {
+            return { mode: 'all', phases:[] };
+        }
+        const phases = [...document.querySelectorAll('#l3-cld-phase-options input:checked')].map(cb => cb.value);
+        return { mode: 'phase', phases }; 
+    }
+
     function getL3Platforms() {
         return [...document.querySelectorAll('#l3-platform-list input:checked')].map(cb => cb.value);
     }
@@ -1207,6 +1218,13 @@
             const product = getL3Product();
             if (!product) { alert('Select a product.'); resetPill(); return; }
 
+            const { mode: cloudMode, phases: cloudPhases } = getL3CloudType();
+            if (cloudMode === 'phase' && cloudPhases.length === 0) {
+                alert('Select at least one cloud phase.');
+                resetPill();
+                return;
+            }
+
             const platform = getL3Platforms().join(',');
             if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
 
@@ -1217,22 +1235,23 @@
             const { start, end } = getL3DateRange();
             const bbox = getBbox('l3');
             const surface = getL3SurfaceType();
-            const features = getActiveBorders().join(',');
-            
+            // const features = getActiveBorders().join(',');
             
             const plotType = getSelectedPlotType();
-            let cmap, min, max;
+            let cmap, min, max, features;
             if (plotType === 'trendmap') {
                 cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse')
                 min = document.getElementById('trend-colorbar-min').valueAsNumber;
                 max = document.getElementById('trend-colorbar-max').valueAsNumber;
+                features = getActiveBorders('l3-trendmap-borders').join(',');
             } else {
                 cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse')
                 min = document.getElementById('mean-colorbar-min').valueAsNumber;
                 max = document.getElementById('mean-colorbar-max').valueAsNumber;
+                features = getActiveBorders('l3-meanmap-borders').join(',');
             }
 
-            const params = new URLSearchParams({ product, platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap });
+            const params = new URLSearchParams({ product, cloud_mode:cloudMode, cloud_phases:cloudPhases.join(','), platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap });
             url = `/api/l3/generate?${params}`;
         }
 
@@ -1259,6 +1278,7 @@
                 meanmapState = { cache_key: data.cache_key };
                 document.getElementById('plot-area').innerHTML = 
                     `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+                resetPlotSettings();
             } 
             if (data.plot_type === 'timeseries') {
                 document.getElementById('l3-meanmap-settings').style.display = 'none';
@@ -1266,10 +1286,10 @@
                 document.getElementById('l3-trendmap-settings').style.display = 'none';
                 document.getElementById('plot-monthly').style.display = 'flex';
                 document.getElementById('plot-overall').style.display = 'flex';
-
                 tsState = { cache_key: data.cache_key, platforms: data.platforms, colors: data.colors, show_trend: true, };
                 buildTsToggles(data.platforms, data.colors);
                 setTsPlots(data);
+                resetPlotSettings();
             }
             if (data.plot_type === 'trendmap') {
                 document.getElementById('l3-meanmap-settings').style.display = 'none';
@@ -1280,6 +1300,7 @@
                 trendmapState = { cache_key: data.cache_key };
                 document.getElementById('plot-area').innerHTML = 
                     `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+                resetPlotSettings();
             }
             
         } catch (err) {
@@ -1343,22 +1364,76 @@
         // Plot
         const meanmapRadio = document.querySelector('input[name="plot-type"][value="meanmap"]');
         if (meanmapRadio) meanmapRadio.checked = true;
-        document.getElementById('toggle-trend-mean').checked = true;
-        document.getElementById('toggle-trend-overall').checked = true;
-        document.getElementById('toggle-trend-monthly').checked = true;
-        ['mean-min','mean-max','overall-min','overall-max','monthly-min','monthly-max'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
 
         document.getElementById('plot-card').style.display = 'none';
         document.getElementById('empty-main').style.display = 'flex';
         document.getElementById('plot-area').innerHTML = '';
         document.getElementById('plot-overall').innerHTML = '';
         document.getElementById('plot-monthly').innerHTML = '';
-        document.getElementById('ts-platform-toggles').innerHTML = '';
+        
         meanmapState = null;
         tsState  = null;
         trendmapState = null;
+        resetPlotSettings();
+    }
+
+    function resetPlotSettings() {
+        // reset mean map settings
+        document.querySelectorAll('#l3-meanmap-settings .cmap-swatch')
+            .forEach(s => {
+                s.classList.remove('active');
+                s.style.border = 'none';
+            });
+
+        const viridis = document.querySelector(
+            '#l3-meanmap-settings .cmap-swatch[data-cmap="viridis"]'
+        );
+        viridis.classList.add('active');
+        viridis.style.border = '2px solid var(--navy)';
+
+        document.getElementById('mean-cmap-reverse').checked = false;
+
+        document.getElementById('mean-colorbar-min').value = '0';
+        document.getElementById('mean-colorbar-max').value = '1';
+
+        document.querySelectorAll('#l3-meanmap-borders .chip')
+            .forEach(chip => chip.classList.remove('active'));
+        document.querySelector(
+            '#l3-meanmap-borders .chip'
+        ).classList.add('active');
+        
+        // reset timeseries settings
+        document.getElementById('toggle-trend-mean').checked = true;
+        document.getElementById('toggle-trend-overall').checked = true;
+        document.getElementById('toggle-trend-monthly').checked = true;
+        ['mean-min','mean-max','overall-min','overall-max','monthly-min','monthly-max'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('ts-platform-toggles').innerHTML = '';
+
+        // reset trend map settings
+        document.querySelectorAll('#l3-trendmap-settings .cmap-swatch')
+            .forEach(s => {
+                s.classList.remove('active');
+                s.style.border = 'none';
+            });
+
+        const bwr = document.querySelector(
+            '#l3-trendmap-settings .cmap-swatch[data-cmap="bwr"]'
+        );
+        bwr.classList.add('active');
+        bwr.style.border = '2px solid var(--navy)';
+
+        document.getElementById('trend-cmap-reverse').checked = false;
+
+        document.getElementById('trend-colorbar-min').value = '';
+        document.getElementById('trend-colorbar-max').value = '';
+
+        document.querySelectorAll('#l3-trendmap-borders .chip')
+            .forEach(chip => chip.classList.remove('active'));
+        document.querySelector(
+            '#l3-trendmap-borders .chip'
+        ).classList.add('active');
     }
 
     // set default chip active, clear the rest
