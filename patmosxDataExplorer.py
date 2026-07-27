@@ -169,9 +169,6 @@ async def l3_generate(request):
         cached = mm_cache[cache_key]
         img = await loop.run_in_executor(None, l3_utils.render_meanmap, cached["lat"], cached["lon"], cached["meanmap"], cached["subset"], cached["product"], cached["bbox"], cmap, min, max, features)
         return sanic_json({"img": img, "cache_key": cache_key,"plot_type": "meanmap"})
-        # result = await loop.run_in_executor(None, l3_utils.plot_meanmap, subset, product, bbox, nodes, surface, angle)
-        # img, lat, lon, data = result
-        # return sanic_json({'img':img, 'lat':lat, 'lon': lon, 'data': data, 'plot_type': 'meanmap'})
     elif plot_type == 'timeseries':
         mean_range = parse_range(request, 'mean_min', 'mean_max')
         overall_range = parse_range(request, 'overall_min', 'overall_max')
