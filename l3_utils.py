@@ -167,10 +167,10 @@ def render_meanmap(lat, lon, meanmap, subset, product, bbox, cmap="viridis", min
     ax.set_title(f"Mean {product.replace('_', ' ').title()}\n{date_range}")
     return fig_to_b64(fig)
 
-def plot_meanmap(subset, product, bbox, nodes, surface='all', angle='all', cmap="viridis", min=0, max=1, features=None):
-    lat, lon, meanmap = compute_meanmap(subset,product,bbox,nodes,surface,angle)
-    img = render_meanmap(lat,lon,meanmap,subset,product,bbox,cmap,min,max,features)
-    return (img, lat.tolist(), lon.tolist(), meanmap.filled(np.nan).tolist())
+# def plot_meanmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all', cmap="viridis", min=0, max=1, features=None):
+#     lat, lon, meanmap = compute_meanmap(subset,product,bbox,nodes,phases,surface,angle)
+#     img = render_meanmap(lat,lon,meanmap,subset,product,bbox,cmap,min,max,features)
+#     return (img, lat.tolist(), lon.tolist(), meanmap.filled(np.nan).tolist())
 
 def build_meanmap_nc(cached):
     lat = cached['lat']
@@ -203,9 +203,7 @@ def build_meanmap_nc(cached):
     v_lon[:] = lon
 
     meta = get_product_meta(product)
-
     v_data = nc.createVariable(product, 'f4', ('lat', 'lon'), fill_value=np.nan)
-    v_data.long_name = product.replace('_', ' ').title()
     v_data.description = 'Time-averaged mean over selected date range and platforms'
     v_data[:] = meanmap.filled(np.nan)
     v_data.long_name = meta['long_name']
@@ -398,21 +396,21 @@ def render_timeseries(ts_data, precomputed, product, active_platforms=None, show
 
     return img1, img2, img3, satellite_colors
 
-def plot_timeseries(subset, product, bbox, nodes, surface='all', angle='all'):
+# def plot_timeseries(subset, product, bbox, nodes, surface='all', angle='all'):
     
-    dates = pd.to_datetime(dates)
-    means = np.array(means)
+#     dates = pd.to_datetime(dates)
+#     means = np.array(means)
 
-    fig, ax = plt.subplots(figsize=(10,3.2))
-    ax.plot(dates, means)
-    ax.set_ylabel(product.replace('_', ' ').title())
-    # ax.set_xlabel('')
-    # ax.grid(alpha=0.3)
-    platforms = ', '.join(sorted(subset['platform'].unique()))
-    ax.set_title(f"Regional mean {product.replace('_', ' ').title()}\n{platforms}")
+#     fig, ax = plt.subplots(figsize=(10,3.2))
+#     ax.plot(dates, means)
+#     ax.set_ylabel(product.replace('_', ' ').title())
+#     # ax.set_xlabel('')
+#     # ax.grid(alpha=0.3)
+#     platforms = ', '.join(sorted(subset['platform'].unique()))
+#     ax.set_title(f"Regional mean {product.replace('_', ' ').title()}\n{platforms}")
 
-    fig.tight_layout()
-    return fig_to_b64(fig)
+#     fig.tight_layout()
+#     return fig_to_b64(fig)
 
 def build_timeseries_nc(cached):
     """Write per-platform timeseries to a temp NetCDF file. Returns the file path."""
@@ -580,3 +578,44 @@ def render_trendmap(lat, lon, slope, subset, product, bbox, cmap="bwr", vrange=N
     ax.set_title(f"Deseasonalized trend: {product.replace('_', ' ').title()}\n{date_range}")
 
     return fig_to_b64(fig)
+
+def build_trendmap_nc(cached):
+    lat = cached['lat']
+    lon = cached['lon']
+    slope = cached['slope']
+    subset = cached['subset']
+    product = cached['product']
+
+    tmp = tempfile.NamedTemporaryFile(suffix='.nc', delete=False)
+    tmp.close()
+
+    nc = netCDF4.Dataset(tmp.name, 'w')
+    nc.title = f'PATMOS-x {product} deseasonalized trend'
+    nc.platforms   = ', '.join(sorted(subset['platform'].unique()))
+    nc.date_start  = str(subset['date'].min().date())
+    nc.date_end    = str(subset['date'].max().date())
+    nc.source      = 'SSEC PATMOS-x Data Explorer'
+
+    nc.createDimension('lat', len(lat))
+    nc.createDimension('lon', len(lon))
+
+    v_lat = nc.createVariable('lat', 'f4', ('lat',))
+    v_lat.units = 'degrees_north'
+    v_lat.long_name = 'Latitude'
+    v_lat[:] = lat
+
+    v_lon = nc.createVariable('lon', 'f4', ('lon',))
+    v_lon.units = 'degrees_east'
+    v_lon.long_name = 'Longitude'
+    v_lon[:] = lon
+
+    meta = get_product_meta(product)
+    unit = meta['units']
+    v_data = nc.createVariable('trend', 'f4', ('lat','lon'), fill_value=np.nan)
+    v_data.long_name = f'{meta["long_name"]} deseasonalized trend'
+    v_data.description = 'Linear trend per decade, fit on deseasonalized (monthly-climatology-removed) values'
+    v_data.units = f'{unit}/decade' if unit not in ('1', 'unknown') else 'per decade'
+    v_data[:] = slope.filled(np.nan) if hasattr(slope, 'filled') else slope
+
+    nc.close()
+    return tmp.name
