@@ -42,55 +42,115 @@ DIM_NODE = 5
 NODE_IDX = {'asc': 0, 'des': 1}
 SURFACE_IDX = {'ocean': 0, 'land': 1}
 ANGLE_IDX = {'nadir': 0, 'all': 1}
-PHASE_IDX = {'water':1, 'supercooled_water':2, 'ice':3}
+PHASE_IDX_FRACTION = {'water':1, 'supercooled_water':2, 'ice':3}
 TOTAL_IDX = [0,1,2,3]
+PHASE_IDX_MEAN = {'water':0, 'supercooled_water':1, 'ice':2}
 
-def read_l3_file(path, nodes, phases=None, surface='all', angle='all', lat_idx=None, lon_idx=None):
+PRODUCT_META = {
+    'cloud_fraction':         {'units': '1',   'long_name': 'Cloud Fraction',         'type': 'fraction',      'counts_var': 'counts_all'},
+    'cloud_top_pressure':     {'units': 'hPa', 'long_name': 'Cloud Top Pressure',     'type': 'weighted_mean', 'counts_var': 'counts'},
+    'cloud_top_temperature':  {'units': 'K',   'long_name': 'Cloud Top Temperature',  'type': 'weighted_mean', 'counts_var': 'counts'},
+    'cloud_top_height':       {'units': 'km',  'long_name': 'Cloud Top Height',       'type': 'weighted_mean', 'counts_var': 'counts'},
+    'cloud_optical_depth':    {'units': '1',   'long_name': 'Cloud Optical Depth',    'type': 'weighted_mean', 'counts_var': 'counts'},
+    'cloud_effective_radius': {'units': 'um',  'long_name': 'Cloud Effective Radius', 'type': 'weighted_mean', 'counts_var': 'counts'},
+}
+FILL_VALUE = -999
+
+def read_l3_file(path, nodes, phases=None, surface='all', angle='all', lat_idx=None, lon_idx=None, product='cloud_fraction'):
     # reads a l3 netCDF file
     # returns (lat, lon, data_2d) - arrays optionally sliced to bbox
+    meta = get_product_meta(product)
+    ptype = meta.get('type', 'fraction')
+    
     with netCDF4.Dataset(path) as nc:
         lat = nc.variables['latitude'][:]
         lon = nc.variables['longitude'][:]
-        raw = nc.variables['counts_all'][:] # product (eg cloud_fraction)
+        if ptype == 'fraction':
+            raw = nc.variables['counts_all'][:]
+        else:
+            value = load_var_masked(nc, product)
+            weight = load_var_masked(nc, meta.get('counts_var', 'counts'))
 
     # select node(s) along last axis
     node_indices = [NODE_IDX[n] for n in nodes]
-    raw = raw[..., node_indices].sum(axis=-1) # -> (lon, lat, ctype, angle, surf)
 
-    #select surface type
-    if surface == 'ocean':
-        raw = raw[..., [SURFACE_IDX['ocean']]].sum(axis=-1)
-    elif surface == 'land':
-        raw = raw[..., [SURFACE_IDX['land']]].sum(axis=-1)
+    if ptype == 'fraction':
+        raw = raw[..., node_indices].sum(axis=-1) # -> (lon, lat, ctype, angle, surf)
+
+        #select surface type
+        if surface == 'ocean':
+            raw = raw[..., [SURFACE_IDX['ocean']]].sum(axis=-1)
+        elif surface == 'land':
+            raw = raw[..., [SURFACE_IDX['land']]].sum(axis=-1)
+        else:
+            raw = raw.sum(axis=-1)
+
+        # select viewing angle
+        if angle == 'nadir':
+            raw = raw[..., [ANGLE_IDX['nadir']]].sum(axis=-1)
+        else:
+            raw = raw.sum(axis=-1)
+
+        total = raw[..., TOTAL_IDX].sum(axis=-1).astype(float)
+        cloudy_idx = [PHASE_IDX_FRACTION[p] for p in phases] if phases else list(PHASE_IDX_FRACTION.values())
+        cloudy = raw[..., cloudy_idx].sum(axis=-1).astype(float)
+        with np.errstate(invalid='ignore', divide='ignore'):
+            result = np.where(total > 0, cloudy / total, np.nan)
+
     else:
-        raw = raw.sum(axis=-1)
+        v, w = value[..., node_indices], weight[..., node_indices]
+        print(v.max())
+        v, w = weighted_reduce(v, w, axis=-1)
+        print(v.max())
+        if surface == 'ocean':
+            v,w = weighted_reduce(v[..., [SURFACE_IDX['ocean']]], w[..., [SURFACE_IDX['ocean']]], axis=-1)
+        elif surface == 'land':
+            v,w = weighted_reduce(v[..., [SURFACE_IDX['land']]], w[..., [SURFACE_IDX['land']]], axis=-1)
+        else:
+            v,w = weighted_reduce(v, w, axis=-1)
+        print(v.max())
 
-    # select viewing angle
-    if angle == 'nadir':
-        raw = raw[..., [ANGLE_IDX['nadir']]].sum(axis=-1)
-    else:
-        raw = raw.sum(axis=-1)
+        if angle == 'nadir':
+            v,w = weighted_reduce(v[..., [ANGLE_IDX['nadir']]], w[..., [ANGLE_IDX['nadir']]], axis=-1)
+        else:
+            v,w = weighted_reduce(v, w, axis=-1)
+        print(v.max())
 
-    total = raw[..., TOTAL_IDX].sum(axis=-1).astype(float)
-    cloudy_idx = [PHASE_IDX[p] for p in phases] if phases else list(PHASE_IDX.values())
-    cloudy = raw[..., cloudy_idx].sum(axis=-1).astype(float)
-    with np.errstate(invalid='ignore', divide='ignore'):
-        cf = np.where(total > 0, cloudy / total, np.nan)
-    cf = np.ma.masked_invalid(cf)
-
-    # transpose to (lat,lon) for pcolormesh
-    cf = cf.T
-    lat_out = lat
-    lon_out = lon
+        cloudy_idx = [PHASE_IDX_MEAN[p] for p in phases] if phases else list(PHASE_IDX_MEAN.values())
+        result, w = weighted_reduce(v[...,cloudy_idx], w[...,cloudy_idx], axis=-1) # combine phases
+        # print(result)
+    field = np.ma.masked_invalid(result).T
 
     if lat_idx is not None:
         lat = lat[lat_idx]
-        cf = cf[lat_idx]
+        field = field[lat_idx]
     if lon_idx is not None:
         lon = lon[lon_idx]
-        cf = cf[:, lon_idx]
-    return lat, lon, cf
+        field = field[:, lon_idx]
+    return lat, lon, field
 
+def load_var_masked(nc, varname, fill=FILL_VALUE):
+    arr = nc.variables[varname][:]
+    if np.ma.isMaskedArray(arr):
+        arr = arr.filled(fill)
+    return np.ma.masked_equal(arr, fill)
+
+def weighted_reduce(value, weight, axis):
+    # collapse "value" along "axis", weighted by "weight"
+    v = np.ma.filled(value, 0.0)
+    w = np.ma.filled(weight, 0.0).astype(float)
+    if np.ma.isMaskedArray(value):
+        w = np.where(np.ma.getmaskarray(value), 0.0, w)
+
+    total_w = w.sum(axis=axis)
+    num = (v * w).sum(axis=axis)
+    #print(total_w)
+    #print(num)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        result = np.where(total_w > 0, num / np.where(total_w == 0, 1, total_w), 0.0)
+        # print(result.size)
+    result = np.ma.masked_where(total_w <= 0, result)
+    return result, total_w
 
 def bbox_indices(path, w, e, s, n):
     # get lat/lon index arrays for a bounding box from the first file
@@ -110,7 +170,7 @@ def compute_meanmap(subset, product, bbox, nodes, phases=None, surface='all', an
     accumulator = None
     count = 0
     for _, row in subset.iterrows():
-        lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx)
+        lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx, product=product)
         if accumulator is None:
             accumulator = np.zeros(v.shape)
         accumulator += v.filled(0)
@@ -226,7 +286,7 @@ def compute_timeseries(subset, product, bbox, nodes, phases=None, surface='all',
         plat_rows = subset[subset['platform'] == platform]
         dates, values = [], []
         for _, row in plat_rows.iterrows():
-            _, _, v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx)
+            _, _, v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx, product=product)
             spatial_mean = float(np.ma.mean(v))
             if not np.isnan(spatial_mean):
                 dates.append(row['date'])
@@ -465,14 +525,6 @@ def build_timeseries_nc(cached):
     nc.close()
     return tmp.name
 
-PRODUCT_META = {
-    'cloud_fraction':   {'units': '1',   'long_name': 'Cloud Fraction'},
-    'cld_press_acha':   {'units': 'hPa', 'long_name': 'Cloud Top Pressure'},
-    'cld_temp_acha':    {'units': 'K',   'long_name': 'Cloud Top Temperature'},
-    'cld_opd_dcomp':    {'units': '1',   'long_name': 'Cloud Optical Depth'},
-    'cld_reff_dcomp':   {'units': 'um',  'long_name': 'Cloud Effective Radius'},
-}
-
 # ───────── TRENDMAP  ────────────────────────────────────────────────
 def compute_trendmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
     w,e,s,n = bbox
@@ -483,7 +535,7 @@ def compute_trendmap(subset, product, bbox, nodes, phases=None, surface='all', a
     grids = [] # list of 2D arrays, one per month
 
     for _, row in subset.iterrows():
-        lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx)
+        lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx, product=product)
         dates.append(row['date'])
         grids.append(v.filled(np.nan))
 
