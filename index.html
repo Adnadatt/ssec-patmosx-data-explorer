@@ -253,7 +253,7 @@
     .run-btn:active { transform: scale(.98); }
 
     .reset-btn {
-        margin: 5px 14px 2px 14px; padding: 8px 14px;
+        margin: 5px 14px 18px 14px; padding: 8px 14px;
         font-size: 12px; font-weight: 500; font-family: inherit;
         color: var(--text-3); background: transparent;
         border: 1px solid var(--border); border-radius: var(--radius);
@@ -356,15 +356,6 @@
                 <div class="field">
                     <label>Satellite</label>
 
-                    
-                    <!-- <div id="platform-list" style="max-height: 180px; overflow-y: auto; border: 1px solid #b0bac8; border-radius: var(--radius); background: var(--white);">
-                        <div style="padding: 8px; font-size: 12px; color: var(--text-3);">Loading...</div>
-                    </div>
-                    <div style="margin-top: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-                        <button onclick="selectAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Select All</button>
-                        <button onclick="clearAllPlatforms()" style="font-size:11px; color:var(--navy); background:none; border:none; cursor:pointer; padding:0;">Clear</button>
-                    </div> -->
-                
                     <div id="l2bc-platform-list" style="max-height: 180px; overflow-y: auto; border: 1px solid #b0bac8; border-radius: var(--radius); background: var(--white);">
                         <label class="platform-row"><input type="checkbox" value="METOP-A" /> METOP-A</label>
                         <label class="platform-row"><input type="checkbox" value="METOP-B" /> METOP-B</label>
@@ -676,7 +667,6 @@
                         <span class="chip" onclick="setChip(this)" style="padding: 3px 7px;">Land</span>
                         <span class="chip" onclick="setChip(this)" style="padding: 3px 7px;">Ocean</span>
                     </div>
-                    
                 </div>
             </div>
         </div>
@@ -703,10 +693,10 @@
                     <label class="toggle"><input type="radio" name="plot-type" value="trendmap"><span class="slider"></span></label>
                 </div>
 
-                <div class="toggle-row">
+                <!-- <div class="toggle-row">
                     <span class="toggle-label">Histogram</span>
                     <label class="toggle"><input type="radio" name="plot-type" value="histogram"><span class="slider"></span></label>
-                </div>
+                </div> -->
             </div>
         </div>
 
@@ -933,13 +923,11 @@
     function showTimeline() {
         document.getElementById('timeline-panel').style.display = 'block';
         document.getElementById('plot-panel').style.display = 'none';
-        // document.getElementById('empty-main').style.display = 'none';
     }
 
     function hideTimeline() {
         document.getElementById('timeline-panel').style.display = 'none';
         document.getElementById('plot-panel').style.display = 'flex';
-        // document.getElementById('empty-main').style.display = 'flex';
     }
 
     // select all / clear ──────────────────────────────────────────────────────────────
@@ -1127,6 +1115,23 @@
         return [...document.querySelectorAll(`#${containerId} .chip.active`)].map(c => c.textContent.trim().toLowerCase());
     }
 
+    const PRODUCT_RANGES = {
+        cloud_fraction: [0,1],
+        cloud_top_pressure: [50,1100],
+        cloud_top_temperature: [160,320],
+        cloud_top_height: [0.075, 20],
+        cloud_optical_depth: [0,160],
+        cloud_effective_radius: [0,160],
+    }
+    // the range for mean colorbar changes based on which product is selected
+    document.getElementById('l3-product').addEventListener('change', function () {
+        const [min, max] = PRODUCT_RANGES[this.value] || [0,1];
+        document.getElementById('mean-colorbar-min').value = min;
+        document.getElementById('mean-colorbar-max').value = max;
+        document.getElementById('mean-colorbar-min').min = min;
+        document.getElementById('mean-colorbar-max').max = max;
+    });
+
     function buildTsToggles(platforms, colors) {
         const container = document.getElementById('ts-platform-toggles');
         container.innerHTML = platforms.map(p => `
@@ -1151,8 +1156,6 @@
         }
         rerenderTimeseries();
     }
-
-    // function timeseriesYaxis
 
     function downloadPlotData(plotType) {
         const cache_key = plotType === 'meanmap' ? meanmapState?.cache_key
@@ -1229,7 +1232,7 @@
             if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
 
             const node = getL3Node();
-            if (!node) { alert('Select a node for L2BC.'); resetPill(); return; }
+            if (!node) { alert('Select a node for L3.'); resetPill(); return; }
 
             const angle = getL3ViewingAngle();
             const { start, end } = getL3DateRange();
@@ -1374,11 +1377,12 @@
         meanmapState = null;
         tsState  = null;
         trendmapState = null;
+
         resetPlotSettings();
     }
 
+    // resets mean map settings
     function resetPlotSettings() {
-        // reset mean map settings
         document.querySelectorAll('#l3-meanmap-settings .cmap-swatch')
             .forEach(s => {
                 s.classList.remove('active');
@@ -1392,9 +1396,6 @@
         viridis.style.border = '2px solid var(--navy)';
 
         document.getElementById('mean-cmap-reverse').checked = false;
-
-        document.getElementById('mean-colorbar-min').value = '0';
-        document.getElementById('mean-colorbar-max').value = '1';
 
         document.querySelectorAll('#l3-meanmap-borders .chip')
             .forEach(chip => chip.classList.remove('active'));
