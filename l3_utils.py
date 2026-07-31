@@ -670,3 +670,4 @@ def build_trendmap_nc(cached):
 
     nc.close()
     return tmp.name
+
