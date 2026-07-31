@@ -99,26 +99,21 @@ def read_l3_file(path, nodes, phases=None, surface='all', angle='all', lat_idx=N
 
     else:
         v, w = value[..., node_indices], weight[..., node_indices]
-        print(v.max())
         v, w = weighted_reduce(v, w, axis=-1)
-        print(v.max())
         if surface == 'ocean':
             v,w = weighted_reduce(v[..., [SURFACE_IDX['ocean']]], w[..., [SURFACE_IDX['ocean']]], axis=-1)
         elif surface == 'land':
             v,w = weighted_reduce(v[..., [SURFACE_IDX['land']]], w[..., [SURFACE_IDX['land']]], axis=-1)
         else:
             v,w = weighted_reduce(v, w, axis=-1)
-        print(v.max())
 
         if angle == 'nadir':
             v,w = weighted_reduce(v[..., [ANGLE_IDX['nadir']]], w[..., [ANGLE_IDX['nadir']]], axis=-1)
         else:
             v,w = weighted_reduce(v, w, axis=-1)
-        print(v.max())
 
         cloudy_idx = [PHASE_IDX_MEAN[p] for p in phases] if phases else list(PHASE_IDX_MEAN.values())
         result, w = weighted_reduce(v[...,cloudy_idx], w[...,cloudy_idx], axis=-1) # combine phases
-        # print(result)
     field = np.ma.masked_invalid(result).T
 
     if lat_idx is not None:
@@ -144,11 +139,8 @@ def weighted_reduce(value, weight, axis):
 
     total_w = w.sum(axis=axis)
     num = (v * w).sum(axis=axis)
-    #print(total_w)
-    #print(num)
     with np.errstate(invalid='ignore', divide='ignore'):
         result = np.where(total_w > 0, num / np.where(total_w == 0, 1, total_w), 0.0)
-        # print(result.size)
     result = np.ma.masked_where(total_w <= 0, result)
     return result, total_w
 
@@ -162,19 +154,22 @@ def bbox_indices(path, w, e, s, n):
     return lat_idx, lon_idx
 
 # ───────── MEANMAP  ─────────────────────────────────────────────────
-def compute_meanmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
+def compute_meanmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all', progress=None):
     # returns (lat,lon,meanmap), no plotting, just data
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
 
+    total = len(subset)
     accumulator = None
     count = 0
-    for _, row in subset.iterrows():
+    for i, (_, row) in enumerate(subset.iterrows()):
         lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx, product=product)
         if accumulator is None:
             accumulator = np.zeros(v.shape)
         accumulator += v.filled(0)
         count += (~np.ma.getmaskarray(v)).astype(int)
+        if progress:
+            progress(i+1, total)
 
     meanmap = np.ma.masked_where(count == 0, accumulator / np.maximum(count,1))
     return lat,lon,meanmap
@@ -276,12 +271,14 @@ def get_product_meta(product):
     return PRODUCT_META.get(product, {'units':'unknown', 'long_name':product.replace('_',' ').title()})
 
 # ───────── TIMESERIES  ──────────────────────────────────────────────
-def compute_timeseries(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
+def compute_timeseries(subset, product, bbox, nodes, phases=None, surface='all', angle='all', progress=None):
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
 
     # per satellite raw timeseries
     ts = {}
+    total = len(subset)
+    done = 0
     for platform in subset['platform'].unique():
         plat_rows = subset[subset['platform'] == platform]
         dates, values = [], []
@@ -291,6 +288,9 @@ def compute_timeseries(subset, product, bbox, nodes, phases=None, surface='all',
             if not np.isnan(spatial_mean):
                 dates.append(row['date'])
                 values.append(spatial_mean)
+            done += 1
+            if progress:
+                progress(done, total)
         if dates:
             ts[platform] = {'dates':dates, 'values':values}
 
@@ -311,10 +311,6 @@ def compute_timeseries(subset, product, bbox, nodes, phases=None, surface='all',
     coeffs = np.polyfit(x_num, all_values, 1)
     trend = np.polyval(coeffs, x_num).tolist()
     slope_per_decade = coeffs[0] * 365.25 * 10
-
-    # overall anomaly trendline
-
-    # monthly anomaly trendline
 
     precomputed = {
         'all_dates':          [d.isoformat() for d in all_dates],
@@ -526,18 +522,21 @@ def build_timeseries_nc(cached):
     return tmp.name
 
 # ───────── TRENDMAP  ────────────────────────────────────────────────
-def compute_trendmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all'):
+def compute_trendmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all', progress=None):
     w,e,s,n = bbox
     lat_idx, lon_idx = bbox_indices(subset['path'].iloc[0], w,e,s,n)
 
     # accumulate data per (lat,lon,time)
     dates = []
     grids = [] # list of 2D arrays, one per month
+    total = len(subset)
 
-    for _, row in subset.iterrows():
+    for i, (_, row) in enumerate(subset.iterrows()):
         lat,lon,v = read_l3_file(row['path'], nodes, phases, surface, angle, lat_idx, lon_idx, product=product)
         dates.append(row['date'])
         grids.append(v.filled(np.nan))
+        if progress:
+            progress(i+1, total)
 
     dates = pd.to_datetime(dates)
     n_times = len(dates)
