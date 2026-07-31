@@ -1115,23 +1115,6 @@
         return [...document.querySelectorAll(`#${containerId} .chip.active`)].map(c => c.textContent.trim().toLowerCase());
     }
 
-    const PRODUCT_RANGES = {
-        cloud_fraction: [0,1],
-        cloud_top_pressure: [50,1100],
-        cloud_top_temperature: [160,320],
-        cloud_top_height: [0.075, 20],
-        cloud_optical_depth: [0,160],
-        cloud_effective_radius: [0,160],
-    }
-    // the range for mean colorbar changes based on which product is selected
-    document.getElementById('l3-product').addEventListener('change', function () {
-        const [min, max] = PRODUCT_RANGES[this.value] || [0,1];
-        document.getElementById('mean-colorbar-min').value = min;
-        document.getElementById('mean-colorbar-max').value = max;
-        document.getElementById('mean-colorbar-min').min = min;
-        document.getElementById('mean-colorbar-max').max = max;
-    });
-
     function buildTsToggles(platforms, colors) {
         const container = document.getElementById('ts-platform-toggles');
         container.innerHTML = platforms.map(p => `
@@ -1182,24 +1165,57 @@
     let meanmapState = null;
     let tsState = null;
     let trendmapState = null;
+    let lastProduct = null;
 
+    const PRODUCT_RANGES = {
+        cloud_fraction: [0,1],
+        cloud_top_pressure: [50,1100],
+        cloud_top_temperature: [160,320],
+        cloud_top_height: [0.075, 20],
+        cloud_optical_depth: [0,160],
+        cloud_effective_radius: [0,160],
+    }
+
+    let progressTimer = null;
     function startProgress(label = 'Loading...') {
         document.getElementById('progress').style.display = 'block';
         document.getElementById('progress-lbl').textContent = label;
-        document.getElementById('progress-pct').textContent = '';
-        document.querySelector('.progress-fill').classList.add('indeterminate');
+        document.getElementById('progress-pct').textContent = '0%';
+        document.querySelector('.progress-fill').classList.remove('indeterminate');
+        document.querySelector('.progress-fill').style.width = '0%'
     }
     function stopProgress() {
         document.getElementById('progress').style.display = 'none';
         document.querySelector('.progress-fill').classList.remove('indeterminate');
+        if (progressTimer) {
+            clearInterval(progressTimer);
+            progressTimer = null;
+        }
+    }
+    function pollProgress(jobId) {
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/l3/progress?job_id=${jobId}`);
+                const data = await res.json();
+                const pct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
+                document.querySelector('.progress-fill').style.width = `${pct}%`;
+                document.getElementById('progress-pct').textContent = `${pct}%`;
+            } catch (err) {
+                console.warn('progress poll failed', err);
+            }
+        }, 500);
     }
 
     async function loadPlot() {
-        startProgress('Computing');
         document.getElementById('timeline-panel').style.display = 'none';
         document.getElementById('plot-card').style.display = 'none';
         document.getElementById('empty-main').style.display = 'none';
         document.getElementById('plot-area').innerHTML = '';
+
+        const jobId = crypto.randomUUID();
+        startProgress('Computing');
+        pollProgress(jobId);
 
         const pill = document.getElementById('status-pill');
         pill.textContent = 'Running'
@@ -1215,7 +1231,7 @@
             if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
             if (!node) { alert('Select a node for L2BC.'); resetPill(); return; }
             const bbox = getBbox('l2bc');
-            const params = new URLSearchParams({ product, platform, node, start, end, ...bbox });
+            const params = new URLSearchParams({ product, platform, node, start, end, ...bbox, job_id: jobId });
             url = `/api/l2bc/generate?${params}`;
         } else {
             const product = getL3Product();
@@ -1248,13 +1264,24 @@
                 max = document.getElementById('trend-colorbar-max').valueAsNumber;
                 features = getActiveBorders('l3-trendmap-borders').join(',');
             } else {
+                if (product !== lastProduct){
+                    const [defMin, defMax] = PRODUCT_RANGES[product] || [0,1];
+                    document.getElementById('mean-colorbar-min').value = defMin;
+                    document.getElementById('mean-colorbar-max').value = defMax;
+                    document.getElementById('mean-colorbar-min').min = defMin;
+                    document.getElementById('mean-colorbar-max').max = defMax;
+                    lastProduct = product;
+                }
+
                 cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse')
                 min = document.getElementById('mean-colorbar-min').valueAsNumber;
                 max = document.getElementById('mean-colorbar-max').valueAsNumber;
                 features = getActiveBorders('l3-meanmap-borders').join(',');
+
+                
             }
 
-            const params = new URLSearchParams({ product, cloud_mode:cloudMode, cloud_phases:cloudPhases.join(','), platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap });
+            const params = new URLSearchParams({ product, cloud_mode:cloudMode, cloud_phases:cloudPhases.join(','), platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap, job_id: jobId });
             url = `/api/l3/generate?${params}`;
         }
 
@@ -1377,6 +1404,7 @@
         meanmapState = null;
         tsState  = null;
         trendmapState = null;
+        lastProduct = null;
 
         resetPlotSettings();
     }

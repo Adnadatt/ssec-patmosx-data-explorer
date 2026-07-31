@@ -8,7 +8,7 @@ from sanic.response import raw, file as sanic_file, json as sanic_json
 import warnings
 warnings.filterwarnings("ignore", message=".*get_event_loop_policy.*")
 import tempfile, os
-
+import uuid
 import plot_utils as pu
 import l3_utils
 from products_l2bc import PRODUCTS as L2BC_PRODUCTS
@@ -60,6 +60,8 @@ async def load_data(app):
     app.ctx.meanmap_cache = {}
     app.ctx.timeseries_cache = {}
     app.ctx.trendmap_cache = {}
+
+    app.ctx.progress = {}
 
     print(f"L2BC: {len(app.ctx.l2bc_files)} rows | L3: {len(app.ctx.l3_files)} files")
 
@@ -159,15 +161,27 @@ async def l3_generate(request):
     bbox = (w, e, s, n)
     cache_key = make_cache_key(product, phases, platforms, start, end, nodes, surface, angle, bbox)
 
+    # progress bar
+    job_id = request.args.get('job_id')
+    progress_store = request.app.ctx.progress
+    if job_id:
+        progress_store[job_id] = {'done': 0, 'total': 1}
+
+    def progress(done, total):
+        if job_id:
+            progress_store[job_id] = {'done':done, 'total':total}
+
     loop = asyncio.get_event_loop()
 
     if plot_type == 'meanmap':
         mm_cache = request.app.ctx.meanmap_cache
         if cache_key not in mm_cache:
-            lat, lon, meanmap = await loop.run_in_executor(None, l3_utils.compute_meanmap, subset, product, bbox, nodes, phases, surface, angle)
+            lat, lon, meanmap = await loop.run_in_executor(None, l3_utils.compute_meanmap, subset, product, bbox, nodes, phases, surface, angle, progress)
             mm_cache[cache_key] = {"lat":lat, "lon":lon, "meanmap":meanmap, "subset":subset, "product":product, "bbox":bbox}
         cached = mm_cache[cache_key]
         img = await loop.run_in_executor(None, l3_utils.render_meanmap, cached["lat"], cached["lon"], cached["meanmap"], cached["subset"], cached["product"], cached["bbox"], cmap, min, max, features)
+        if job_id:
+            progress_store.pop(job_id, None)
         return sanic_json({"img": img, "cache_key": cache_key,"plot_type": "meanmap"})
     elif plot_type == 'timeseries':
         mean_range = parse_range(request, 'mean_min', 'mean_max')
@@ -176,25 +190,36 @@ async def l3_generate(request):
 
         ts_cache = request.app.ctx.timeseries_cache
         if cache_key not in ts_cache:
-            ts_data, precomputed = await loop.run_in_executor(None, l3_utils.compute_timeseries, subset, product, bbox, nodes, phases, surface, angle)
+            ts_data, precomputed = await loop.run_in_executor(None, l3_utils.compute_timeseries, subset, product, bbox, nodes, phases, surface, angle, progress)
             ts_cache[cache_key] = {'ts_data': ts_data, 'precomputed': precomputed, 'product': product}
         cached = ts_cache[cache_key]
         img1, img2, img3, colors = await loop.run_in_executor(None, l3_utils.render_timeseries, cached['ts_data'], cached['precomputed'], cached['product'], None, True, True, True, mean_range, overall_range, monthly_range)
+        if job_id:
+            progress_store.pop(job_id, None)
         return sanic_json({'plot_type': 'timeseries', 'img_mean': img1, 'img_overall': img2, 'img_monthly': img3, 'platforms': list(cached['ts_data'].keys()), 'colors': colors, 'cache_key': cache_key })
     elif plot_type == 'trendmap':
         trend_range = parse_range(request, 'min', 'max')
         tm_cache = request.app.ctx.trendmap_cache
         if cache_key not in tm_cache:
-            lat, lon, slope = await loop.run_in_executor(None, l3_utils.compute_trendmap, subset, product, bbox, nodes, phases, surface, angle)
+            lat, lon, slope = await loop.run_in_executor(None, l3_utils.compute_trendmap, subset, product, bbox, nodes, phases, surface, angle, progress)
             tm_cache[cache_key] = {'lat': lat, 'lon': lon, 'slope': slope,
                                     'subset': subset, 'product': product, 'bbox': bbox}
         cached = tm_cache[cache_key]
         img = await loop.run_in_executor(None, l3_utils.render_trendmap,  cached['lat'], cached['lon'], cached['slope'], cached['subset'], cached['product'], cached['bbox'], cmap, trend_range, features)
+        if job_id:
+            progress_store.pop(job_id, None)
         return sanic_json({'img': img, 'cache_key': cache_key, 'plot_type': 'trendmap'})
 
     else: 
         return sanic_json({'error': f'Unknown plot type: {plot_type}'}, status=400)
-    
+
+@app.get('/api/l3/progress')
+async def l3_progress(request):
+    job_id = request.args.get('job_id')
+    progress = request.app.ctx.progress.get(job_id)
+    if progress is None:
+        return sanic_json({'done':0, 'total':1})
+    return sanic_json(progress)
 
 
 @app.get('/api/l3/rerender-meanmap')
@@ -296,6 +321,13 @@ async def l3_download(request):
         cached = cache[cache_key]
         loop = asyncio.get_event_loop()
         path = await loop.run_in_executor(None, l3_utils.build_timeseries_nc, cached)
+    elif plot_type == 'trendmap':
+        cache = request.app.ctx.trendmap_cache
+        if cache_key not in cache:
+            return sanic_json({"error":"cache expired"}, status=404)
+        cached = cache[cache_key]
+        loop = asyncio.get_event_loop()
+        path = await loop.run_in_executor(None, l3_utils.build_trendmap_nc, cached)
     else:
         return sanic_json({'error': f'Unknown plot type: {plot_type}'}, status=400)
     
