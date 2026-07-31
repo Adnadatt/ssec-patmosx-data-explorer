@@ -13,8 +13,39 @@ import plot_utils as pu
 import l3_utils
 from products_l2bc import PRODUCTS as L2BC_PRODUCTS
 
+from dataclasses import dataclass, field
+from typing import Optional
+from sanic_ext import validate
+
 app = Sanic("PatmosxDataExplorer")
 app.static('/static', './static')
+
+# set timeouts
+app.config.REQUEST_TIMEOUT = 600
+app.config.RESPONSE_TIMEOUT = 600
+app.config.KEEP_ALIVE_TIMEOUT = 75
+
+@dataclass
+class L3GenerateQuery:
+    product: str = 'cloud_fraction'
+    platform: str = ''
+    start: Optional[str] = None
+    end: Optional[str] = None
+    plotType: str = 'meanmap'
+    node: str = 'both'
+    surface: str = 'all'
+    angle: str = 'all'
+    features: str = ''
+    cmap: str = 'viridis'
+    min: float = 0.0
+    max: float = 1.0
+    w: float = -180.0
+    e: float = 180.0
+    s: float = -90.0
+    n: float = 90.0
+    cloud_mode: str = 'all'
+    cloud_phases: str = ''
+    job_id: Optional[str] = None
 
 @app.get('/api/borders')
 async def borders(request):
@@ -126,30 +157,38 @@ async def l3_platforms(request):
     return sanic_json(sorted(files['platform'].unique().tolist()))
 
 @app.get('/api/l3/generate')
-async def l3_generate(request):
+@validate(query=L3GenerateQuery)
+async def l3_generate(request, query:L3GenerateQuery):
+    errors, clean = sanitize_l3_params(request)
+    if errors:
+        return sanic_json({'error': '; '.join(errors)}, status=400)
+
     files = request.app.ctx.l3_files
-    product    = request.args.get('product', 'cloud_fraction')
-    platforms  = request.args.get('platform', '').split(',')
-    platforms  = [p for p in platforms if p]
+    product    = clean['product']
+    platforms  = clean['platforms']
+    plot_type  = clean['plot_type']
+    node       = clean['node']
+    surface    = clean['surface']
+    angle      = clean['angle']
+    features   = clean['features']
+
     start      = request.args.get('start')
     end        = request.args.get('end')
-    plot_type  = request.args.get('plotType', 'meanmap')
-    node       = request.args.get('node', 'both')
-    surface    = request.args.get('surface', 'all').lower()
-    angle      = request.args.get('angle', 'all').lower()
     nodes = ['asc', 'des'] if node == 'both' else [node]
-    features = [f for f in request.args.get('features', '').split(',') if f]
-    cmap = request.args.get("cmap", "viridis")
-    min = float(request.args.get("min", 0))
-    max = float(request.args.get("max", 1))
-    w = float(request.args.get('w', -180))
-    e = float(request.args.get('e', 180))
-    s = float(request.args.get('s', -90))
-    n = float(request.args.get('n', 90))
+
+    cmap = sanitize_cmap(request.args.get("cmap", "viridis"))
+    min_ = float(request.args.get("min", 0))
+    max_ = float(request.args.get("max", 1))
+
+    w = clamp(float(request.args.get('w', -180)), -180, 180)
+    e = clamp(float(request.args.get('e', 180)), -180, 180)
+    s = clamp(float(request.args.get('s', -90)), -90, 90)
+    n = clamp(float(request.args.get('n', 90)), -90, 90)
+    if s >= n:
+        return sanic_json({'error': 'South latitude must be less than North latitude.'}, status=400)
 
     cloud_mode = request.args.get('cloud_mode', 'all')
-    cloud_phases_raw = request.args.get('cloud_phases', '')
-    phases = [p for p in cloud_phases_raw.split(',') if p] if cloud_mode == 'phase' else None
+    phases = clean['phases'] if cloud_mode == 'phase' else None
  
     if not platforms:
         return sanic_json({'error': 'Select at least one platform.'}, status=400)
@@ -162,7 +201,7 @@ async def l3_generate(request):
     cache_key = make_cache_key(product, phases, platforms, start, end, nodes, surface, angle, bbox)
 
     # progress bar
-    job_id = request.args.get('job_id')
+    job_id = sanitize_job_id(request.args.get('job_id'))
     progress_store = request.app.ctx.progress
     if job_id:
         progress_store[job_id] = {'done': 0, 'total': 1}
@@ -179,7 +218,7 @@ async def l3_generate(request):
             lat, lon, meanmap = await loop.run_in_executor(None, l3_utils.compute_meanmap, subset, product, bbox, nodes, phases, surface, angle, progress)
             mm_cache[cache_key] = {"lat":lat, "lon":lon, "meanmap":meanmap, "subset":subset, "product":product, "bbox":bbox}
         cached = mm_cache[cache_key]
-        img = await loop.run_in_executor(None, l3_utils.render_meanmap, cached["lat"], cached["lon"], cached["meanmap"], cached["subset"], cached["product"], cached["bbox"], cmap, min, max, features)
+        img = await loop.run_in_executor(None, l3_utils.render_meanmap, cached["lat"], cached["lon"], cached["meanmap"], cached["subset"], cached["product"], cached["bbox"], cmap, min_, max_, features)
         if job_id:
             progress_store.pop(job_id, None)
         return sanic_json({"img": img, "cache_key": cache_key,"plot_type": "meanmap"})
@@ -339,6 +378,82 @@ async def l3_download(request):
     )
     os.unlink(path)
     return resp
+
+# ───────── SANITIZATION  ────────────────────────────────────────────
+ALLOWED_SURFACES = {'all', 'ocean', 'land'}
+ALLOWED_ANGLES = {'all', 'nadir'}
+ALLOWED_NODES = {'both', 'asc', 'des'}
+ALLOWED_PLOT_TYPES = {'meanmap', 'timeseries', 'trendmap'}
+ALLOWED_PHASES = {'water', 'supercooled_water', 'ice'}
+ALLOWED_FEATURES = {'coasts', 'countries', 'states'}
+ALLOWED_PRODUCTS = set(l3_utils.PRODUCT_META.keys())
+
+def sanitize_l3_params(request):
+    errors = []
+
+    product = request.args.get('product', 'cloud_fraction')
+    if product not in ALLOWED_PRODUCTS:
+        errors.append(f"Unknown product: {product}")
+
+    surface = request.args.get('surface', 'all').lower()
+    if surface not in ALLOWED_SURFACES:
+        errors.append(f"Unknown surface: {surface}")
+
+    angle = request.args.get('angle', 'all')
+    if angle not in ALLOWED_ANGLES:
+        errors.append(f"Unknown angle: {angle}")
+
+    node = request.args.get('node', 'both')
+    if node not in ALLOWED_NODES:
+        errors.append(f"Invalid node: {node}")
+
+    plot_type = request.args.get('plotType', 'meanmap')
+    if plot_type not in ALLOWED_PLOT_TYPES:
+        errors.append(f"Invalid plotType: {plot_type}")
+
+    features = [f for f in request.args.get('features', '').split(',') if f]
+    bad_features = set(features) - ALLOWED_FEATURES
+    if bad_features:
+        errors.append(f"Invalid features: {bad_features}")
+
+    phases_raw = request.args.get('cloud_phases', '')
+    phases = [p for p in phases_raw.split(',') if p]
+    bad_phases = set(phases) - ALLOWED_PHASES
+    if bad_phases:
+        errors.append(f"Invalid cloud_phases: {bad_phases}")
+
+    platforms = [p for p in request.args.get('platform', '').split(',') if p]
+    known_platforms = set(request.app.ctx.l3_files['platform'].unique())
+    bad_platforms = set(platforms) - known_platforms
+    if bad_platforms:
+        errors.append(f"Unknown platforms: {bad_platforms}")
+
+    return errors, {
+        'product': product, 'surface': surface, 'angle': angle, 'node': node,
+        'plot_type': plot_type, 'features': features, 'phases': phases, 'platforms': platforms,
+    }
+
+ALLOWED_CMAPS = {
+    'viridis', 'bwr', 'turbo', 'magma', 'managua', 'gray',
+    'RdBu', 'coolwarm', 'PRGn', 'BrBG', 'PuOr',
+}
+
+def sanitize_cmap(cmap):
+    base = cmap[:-2] if cmap.endswith('_r') else cmap
+    if base not in ALLOWED_CMAPS:
+        return 'viridis'
+    return cmap
+
+def clamp(val, lo, hi):
+    return max(lo, min(hi, val))
+
+import re
+JOB_ID_RE = re.compile(r'^[a-zA-Z0-9\-]{1,64}$')
+
+def sanitize_job_id(job_id):
+    if job_id and JOB_ID_RE.match(job_id):
+        return job_id
+    return None
 
 if __name__ == "__main__":
     app.run()

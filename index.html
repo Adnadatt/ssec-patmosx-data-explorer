@@ -286,10 +286,10 @@
         background-size: 200% 100%;
         animation: shimmer 1.4s infinite linear;
     }
-    @keyframes shimmer {
+    /* @keyframes shimmer {
         0% { background-position: 200% center; }
         100% { background-position: -200% center; }
-    }
+    } */
 
     #plot-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .empty-main {
@@ -1317,9 +1317,9 @@
                 document.getElementById('plot-monthly').style.display = 'flex';
                 document.getElementById('plot-overall').style.display = 'flex';
                 tsState = { cache_key: data.cache_key, platforms: data.platforms, colors: data.colors, show_trend: true, };
-                buildTsToggles(data.platforms, data.colors);
                 setTsPlots(data);
                 resetPlotSettings();
+                buildTsToggles(data.platforms, data.colors);
             }
             if (data.plot_type === 'trendmap') {
                 document.getElementById('l3-meanmap-settings').style.display = 'none';
@@ -1341,6 +1341,7 @@
         }
     } 
 
+    // Resetting ────────────────────────────────────────────────────────────────────────
     function resetPill() {
         stopProgress();
         document.getElementById('progress').style.display = 'none';
@@ -1474,6 +1475,7 @@
         });
     }
 
+    // Rerendering ──────────────────────────────────────────────────────────────────────
     async function rerenderMeanmap() {
         if (!meanmapState) return;
 
@@ -1549,6 +1551,7 @@
 
         document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
     }
+    
 
     </script>
 
