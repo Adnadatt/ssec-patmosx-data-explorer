@@ -1017,6 +1017,45 @@
         return presets[val] || presets.global;
     }
 
+    // date range initialization ────────────────────────────────────────────────────────
+    let l3DateBounds = { min: '1980-01', max: '2026-01' };
+    let l2bcDateBounds = { min: '1980-01-24', max: '2026-01-01' };
+    
+    async function initDateRange() {
+        try {
+            const l2bcres = await fetch('api/l2bc/date-range');
+            const l2bc = await l2bcres.json();
+            if (l2bc.max) {
+                l2bcDateBounds = l2bc;
+                const startEl = document.getElementById('l2bc-date-start');
+                const endEl = document.getElementById('l2bc-date-end');
+                startEl.min = l2bc.min;
+                startEl.max = l2bc.max;
+                endEl.min = l2bc.min;
+                endEl.max = l2bc.max;
+                endEl.value = l2bc.max;
+            }
+        } catch (err) {
+            console.warn('Could not load L2BC date range', err);
+        }
+        try {
+            const l3res = await fetch('api/l3/date-range');
+            const l3 = await l3res.json();
+            if (l3.max) {
+                l3DateBounds = l3;
+                const startEl = document.getElementById('l3-date-start');
+                const endEl = document.getElementById('l3-date-end');
+                startEl.min = l3.min;
+                startEl.max = l3.max;
+                endEl.min = l3.min;
+                endEl.max = l3.max;
+                endEl.value = l3.max;
+            }
+        } catch (err) {
+            console.warn('Could not load L3 date range', err);
+        }
+    }
+
     // Getters ──────────────────────────────────────────────────────────────────────────
 
     function getL2bcProduct() {
@@ -1374,10 +1413,10 @@
         resetChipGroup('#l3-viewing-angle', 'All Viewing Angles');
 
         // Date Range
-        document.getElementById('l2bc-date-start').value = '1980-01-24';
-        document.getElementById('l2bc-date-end').value = '2026-01-01';
-        document.getElementById('l3-date-start').value = '1980-01';
-        document.getElementById('l3-date-end').value = '2026-01';
+        document.getElementById('l2bc-date-start').value = l2bcDateBounds.min;
+        document.getElementById('l2bc-date-end').value = l2bcDateBounds.max;
+        document.getElementById('l3-date-start').value = l3DateBounds.min;
+        document.getElementById('l3-date-end').value = l3DateBounds.max;
 
         // Region
         document.getElementById('l2bc-bbox-select').value = 'global';
@@ -1552,7 +1591,7 @@
         document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
     }
     
-
+    initDateRange();
     </script>
 
     </html>
