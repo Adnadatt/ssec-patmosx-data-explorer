@@ -101,6 +101,7 @@ async def load_data(app):
 async def index(request):
     return await sanic_file("index.html")
 
+# ───────── LEVEL 2BC  ───────────────────────────────────────────────
 @app.get("/api/l2bc/products")
 async def l2bc_products(request):
     products = request.app.ctx.l2bc_products;
@@ -151,6 +152,18 @@ async def l2bc_generate(request):
     fp.seek(0)
     return sanic_json({'img': 'data:image/png;base64' + base64.b64encode(fp.read()).decode()})
 
+@app.get('/api/l2bc/date-range')
+async def l2bc_date_range(request):
+    files = request.app.ctx.l2bc_files
+    dates = files.index.get_level_values('date')
+    if len(dates) == 0:
+        return sanic_json({'min': None, 'max': None})
+    return sanic_json({
+        'min': files['date'].min().strftime('%Y-%m'),
+        'max': files['date'].max().strftime('%Y-%m'),
+    })
+
+# ───────── LEVEL 3  ─────────────────────────────────────────────────
 @app.get("/api/l3/platforms")
 async def l3_platforms(request):
     files = request.app.ctx.l3_files
@@ -307,17 +320,6 @@ async def rerender_timeseries(request):
                                                      mean_range, overall_range, monthly_range)
 
     return sanic_json({'img_mean':img1, 'img_overall':img2, 'img_monthly': img3})
-
-def parse_range(request, min_key, max_key):
-    # returns (min, max) as floats, or None if either side is blank/missing
-    raw_min = request.args.get(min_key, '')
-    raw_max = request.args.get(max_key, '')
-    if raw_min == '' or raw_max == '':
-        return None
-    try:
-        return (float(raw_min), float(raw_max))
-    except ValueError:
-        return None
     
 def make_cache_key(product, phases, platforms, start, end, nodes, surface, angle, bbox):
     phase_str = ','.join(sorted(phases)) if phases else 'all'
@@ -378,6 +380,27 @@ async def l3_download(request):
     )
     os.unlink(path)
     return resp
+
+def parse_range(request, min_key, max_key):
+    # returns (min, max) as floats, or None if either side is blank/missing
+    raw_min = request.args.get(min_key, '')
+    raw_max = request.args.get(max_key, '')
+    if raw_min == '' or raw_max == '':
+        return None
+    try:
+        return (float(raw_min), float(raw_max))
+    except ValueError:
+        return None
+
+@app.get('/api/l3/date-range')
+async def l3_date_range(request):
+    files = request.app.ctx.l3_files
+    if files.empty:
+        return sanic_json({'min': None, 'max': None})
+    return sanic_json({
+        'min': files['date'].min().strftime('%Y-%m'),
+        'max': files['date'].max().strftime('%Y-%m'),
+    })
 
 # ───────── SANITIZATION  ────────────────────────────────────────────
 ALLOWED_SURFACES = {'all', 'ocean', 'land'}
