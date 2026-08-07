@@ -32,7 +32,7 @@ http://localhost:8001
 
 ## Project Structure
 
-- `patmosxDataExplorer.py` — Sanic app, API routes
+- `patmosxDataExplorer.py` — Sanic app, API routes, receives the requests from the user
 - `l3_utils.py` — L3 data reading, computation, and plotting
 - `plot_utils.py` — L2BC plotting
 - `index.html` — frontend
