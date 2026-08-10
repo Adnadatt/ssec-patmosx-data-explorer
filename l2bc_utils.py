@@ -20,7 +20,7 @@ import xarray as xr
 import subprocess
 import os
 
-ROOT = Path('[path to l2bc files]')
+ROOT = Path('[path to L2BC files]')
 
 
 def scan_files(root=ROOT):
