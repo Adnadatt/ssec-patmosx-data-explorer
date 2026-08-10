@@ -222,11 +222,6 @@ def render_meanmap(lat, lon, meanmap, subset, product, bbox, cmap="viridis", min
     ax.set_title(f"Mean {product.replace('_', ' ').title()}\n{date_range}")
     return fig_to_b64(fig)
 
-# def plot_meanmap(subset, product, bbox, nodes, phases=None, surface='all', angle='all', cmap="viridis", min=0, max=1, features=None):
-#     lat, lon, meanmap = compute_meanmap(subset,product,bbox,nodes,phases,surface,angle)
-#     img = render_meanmap(lat,lon,meanmap,subset,product,bbox,cmap,min,max,features)
-#     return (img, lat.tolist(), lon.tolist(), meanmap.filled(np.nan).tolist())
-
 def build_meanmap_nc(cached):
     lat = cached['lat']
     lon = cached['lon']
