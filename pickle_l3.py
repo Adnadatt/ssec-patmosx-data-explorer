@@ -1,11 +1,12 @@
 # pickle_l3.py
+import os
 from tqdm import tqdm
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
-L3A_ROOT = Path('/home/jseo/l3a')
+L3_ROOT = Path(os.environ.get('L3_ROOT'))
 OUT_PATH = 'l3_files.pickle'
 
 def scan_l3_files(root):
@@ -25,7 +26,7 @@ def scan_l3_files(root):
 
 def main():
     print("Scanning l3a files...")
-    df = scan_l3_files(L3A_ROOT)
+    df = scan_l3_files(L3_ROOT)
     df.to_pickle(OUT_PATH)
     print(f"Saved {OUT_PATH} - {len(df)} files, "
           f"{df['platform'].nunique()} platforms, "
