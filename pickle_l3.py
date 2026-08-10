@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 
-L3A_ROOT = Path('/home/jseo/l3a')
+L3A_ROOT = Path('[path to L3 files]')
 OUT_PATH = 'l3_files.pickle'
 
 def scan_l3_files(root):
