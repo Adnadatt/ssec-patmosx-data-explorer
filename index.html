@@ -149,7 +149,10 @@
     .bbox-custom.show { display: block; }      
 
     /* ── Tabs ─────────────────────────────────────────────────────── */
-    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 0.5px solid var(--border); }
+    .tab-bar { 
+        display: grid; 
+        /* grid-template-columns: 1fr 1fr; uncomment this after L2BC tab is finished */
+        border-bottom: 0.5px solid var(--border); }
     .tab {
         font-size: 13px;
         font-weight: 700;
@@ -321,11 +324,11 @@
 
     <div class="sidebar-section">
         <div class="tab-bar">
-            <div class="tab" onclick="setTab(this, 'l2bc')">level 2bc</div>
+            <!-- <div class="tab" onclick="setTab(this, 'l2bc')">level 2bc</div> commented out because L2BC isn't completed -->
             <div class="tab active" onclick="setTab(this, 'l3')">level 3</div>
         </div>
     </div>
-
+    
     <div id="sidebar-l2bc" style="display:none">
         <!-- PRODUCT -->
         <div class="sidebar-section">
@@ -488,6 +491,7 @@
         <button class="run-btn" onclick="loadPlot()">Generate Plot</button>
         <button class="reset-btn" onclick="resetAll()">Reset parameters</button>
     </div>
+    
 
     <div id="sidebar-l3">
         <!-- PRODUCT -->
