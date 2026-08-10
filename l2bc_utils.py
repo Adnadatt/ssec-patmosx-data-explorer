@@ -20,7 +20,7 @@ import xarray as xr
 import subprocess
 import os
 
-ROOT = Path('/media/coda-drive/patmosx_l2bc/l2bc')
+ROOT = Path('[path to l2bc files]')
 
 
 def scan_files(root=ROOT):
