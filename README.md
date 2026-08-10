@@ -1,6 +1,25 @@
+## Configuration
+
+Copy the example config script and fill in your local data paths:
+
+```bash
+cp config-example.sh config.sh
+```
+
+Then edit `config.sh` with the actual paths to your L2BC and L3 data on disk:
+
+```bash
+export L2BC_ROOT="/path/to/your/l2bc/data"
+export L3_ROOT="/path/to/your/l3a/data"
+```
+
+`config.sh` is gitignored since paths may be machine-specific — only
+`config-example.sh` (with placeholder values) is tracked in git.
+
 ## Setup
 Before running the server, build the file indexes by running the following commands from the project root:
 ```bash
+source config.sh
 python pickle_l2bc.py 
 python pickle_l3.py
 ```
