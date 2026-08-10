@@ -7,7 +7,7 @@ import l2bc_utils
 from products_l2bc import PRODUCTS
 from pathlib import Path
 
-L2BC_PATH = Path('/data/www/patmosx_l2bc/l2bc')
+L2BC_PATH = Path('[path to L2BC files]')
 OUT_PATH = 'l2bc_files.pickle'
 
 def main():
