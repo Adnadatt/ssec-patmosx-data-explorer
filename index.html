@@ -307,12 +307,23 @@
 
 <body>
     <div class="page-title" style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
-        <img src="/static/uw-logo.png" style="height: calc(32px + 1vw);" />
-        <img src="/static/ssec-logo.png" style="height: calc(32px + 1vw);" />
+
+        <div style="display: flex; flex-direction: column">
+        <img src="/static/ssec-logo.png" style="height: calc(40px + 1vw);" />
+        
+        <div style="display:flex; gap:8px; margin-top:5px; opacity:.9;">
+            <img src="/static/uw-logo.png" style="height:18px;" />
+            <img src="/static/cimss-logo.svg" style="height:18px;" />
+            <img src="/static/noaa-logo.svg" style="height:18px;" />
+        </div>
+        </div>
+
         <span><p style="font-size: 11px; font-weight: 600; color: #4d4d4d; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 2px;">Space Science and Engineering Center </p>
         <h1 style="margin: 0;">PATMOS-x Satellite Data Explorer</h1>
         <p>Select a satellite, node, date range, and product to generate analysis plots.</p></span>
     </div>
+
+    
 <!-- Body: sidebar + main -->
 <div class="page-body">
         
