@@ -289,10 +289,6 @@
         background-size: 200% 100%;
         animation: shimmer 1.4s infinite linear;
     }
-    /* @keyframes shimmer {
-        0% { background-position: 200% center; }
-        100% { background-position: -200% center; }
-    } */
 
     #plot-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .empty-main {
@@ -311,8 +307,9 @@
 
 <body>
     <div class="page-title" style="display: flex; flex-direction: row; align-items: center; gap: 15px;">
-        <img src="/static/ssec-logo.png" style="height: calc(40px + 1vw);" />
-        <span><h1>SSEC PATMOS-x Satellite Data Explorer</h1>
+        <img src="/static/uw-logo.png" style="height: calc(32px + 1vw);" />
+        <img src="/static/ssec-logo.png" style="height: calc(32px + 1vw);" />
+        <span><h1>Space Science and Engineering Center PATMOS-x Satellite Data Explorer</h1>
         <p>Select a satellite, node, date range, and product to generate analysis plots.</p></span>
     </div>
 <!-- Body: sidebar + main -->
