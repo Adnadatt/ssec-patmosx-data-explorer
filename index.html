@@ -302,15 +302,83 @@
     .empty-icon i { font-size: 26px; color: #c0c6d4; }
     .empty-main h3 { font-size: 15px; font-weight: 700; color: var(--text-2); }
     .empty-main p  { font-size: 13px; color: var(--text-3); max-width: 280px; line-height: 1.6; }
+
+    /* ── Settings ─────────────────────────────────────────────── */
+    .plot-settings-btn {
+        font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
+        border:1px solid var(--border); background:var(--white); color:var(--text-2);
+        cursor:pointer; display:flex; align-items:center; gap:5px;
+    }
+    .plot-settings-btn:hover { background: #e0e4ee; }
+
+    /* ── Citation ─────────────────────────────────────────────── */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.45);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+        background: var(--white);
+        border-radius: 8px;
+        padding: 20px 22px;
+        max-width: 480px;
+        width: 90%;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .modal-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    .modal-card-header span { font-size: 14px; font-weight: 700; color: var(--text-2); }
+    .modal-close-btn {
+        background: none; border: none; cursor: pointer;
+        color: var(--text-3); font-size: 16px; padding: 0; line-height: 1;
+    }
+    .modal-close-btn:hover { color: var(--text-2); }
+    .modal-citation-txt {
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.6;
+        margin-bottom: 14px;
+    }
+    .modal-copy-btn {
+        font-size: 11px;
+        font-weight: 600;
+        width: 100%;
+        padding: 8px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--white);
+        color: var(--text-2);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: .15s;
+    }
+    .modal-copy-btn:hover { background: #e0e4ee; }
+    .modal-copy-btn.copied {
+        background: var(--navy);
+        border-color: var(--navy);
+        color: var(--white);
+    }
 </style>
 </head>
 
 <body>
     <div class="page-title" style="display: flex; flex-direction: row; align-items: center; gap: 10px;">
         <div style="display: flex; flex-direction: column">
-        <img src="/static/ssec-logo.png" style="height: calc(40px + 1vw);" />
+        <img src="/static/ssec-logo.png" style="height: calc(37px + 1vw);" />
         
-        <div style="display:flex; gap:8px; margin-top:5px; opacity:.9;">
+        <div style="display:flex; gap:3px; margin-top:5px; opacity:.9;">
             <img src="/static/uw-logo.png" style="height:18px;" />
             <img src="/static/cimss-logo.svg" style="height:18px;" />
             <img src="/static/noaa-logo.svg" style="height:18px;" />
@@ -816,13 +884,14 @@
                             </div>
                         </div>
                         
-                        <button onclick="downloadPlotData('timeseries')"
-                            style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
-                                border:1px solid var(--border); background:var(--white); color:var(--text-2);
-                                cursor:pointer; display:flex; align-items:center; gap:5px; white-space:nowrap;
-                                flex-shrink:0; margin-left:auto;">
-                            <i class="ti ti-download"></i> Download NetCDF
-                        </button>
+                        <div class="field" style="margin-left: auto; align-self: flex-end; align-items: flex-end; display: flex; flex-direction: column; gap: 6px;">
+                            <button onclick="downloadPlotData('timeseries')" class="plot-settings-btn">
+                                <i class="ti ti-download"></i> Download NetCDF
+                            </button>
+                            <button onclick="openCiteModal()" class="plot-settings-btn">
+                                <i class="ti ti-quote"></i> General Citation
+                            </button>
+                        </div>
                     </div>
 
                     
@@ -850,9 +919,9 @@
                         <label>Color Range</label>
                         <div style="display: flex; gap: 8px;">
                             <label>Min</label>
-                            <input type="number" id="mean-colorbar-min" min="0" max="1" step="0.01" value="0.00" onchange="rerenderMeanmap()" style="height: 20px;">
+                            <input type="number" id="mean-colorbar-min" min="0" max="1" step="0.01" value="0.00" onchange="rerenderMeanmap()" style="height: 20px; width: 70px;">
                             <label>Max</label>
-                            <input type="number" id="mean-colorbar-max" min="0" max="1" step="0.01" value="1.00" onchange="rerenderMeanmap()" style="height: 20px;">
+                            <input type="number" id="mean-colorbar-max" min="0" max="1" step="0.01" value="1.00" onchange="rerenderMeanmap()" style="height: 20px; width: 70px;">
                         </div>
                     </div>
                     <div class="field">
@@ -864,12 +933,13 @@
                         </div>
                     </div>
 
-                    <div class="field" style="margin-left: auto; align-self: flex-end;">
-                        <button onclick="downloadPlotData('meanmap')"
-                            style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
-                                border:1px solid var(--border); background:var(--white); color:var(--text-2);
-                                cursor:pointer; display:flex; align-items:center; gap:5px;">
+                    <div class="field" style="margin-left: auto; align-self: flex-end; align-items: flex-end; display: flex; flex-direction: column; gap: 6px;">
+                        
+                        <button onclick="downloadPlotData('meanmap')" class="plot-settings-btn">
                             <i class="ti ti-download"></i> Download NetCDF
+                        </button>
+                        <button onclick="openCiteModal()" class="plot-settings-btn">
+                            <i class="ti ti-quote"></i> General Citation
                         </button>
                     </div>
                 </div>
@@ -909,12 +979,12 @@
                         </div>
                     </div>
 
-                    <div class="field" style="margin-left: auto; align-self: flex-end;">
-                        <button onclick="downloadPlotData('trendmap')"
-                            style="font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
-                                border:1px solid var(--border); background:var(--white); color:var(--text-2);
-                                cursor:pointer; display:flex; align-items:center; gap:5px;">
+                    <div class="field" style="margin-left: auto; align-self: flex-end; align-items: flex-end; display: flex; flex-direction: column; gap: 6px;">
+                        <button onclick="downloadPlotData('trendmap')" class="plot-settings-btn">
                             <i class="ti ti-download"></i> Download NetCDF
+                        </button>
+                        <button onclick="openCiteModal()" class="plot-settings-btn">
+                            <i class="ti ti-quote"></i> General Citation
                         </button>
                     </div>
                 </div>
@@ -924,686 +994,726 @@
             </div>
         </div>
     </main>
+</div>
+
+<div class="modal-overlay" id="cite-overlay" onclick="if(event.target===this) closeCiteModal()">
+    <div class="modal-card">
+        <div class="modal-card-header">
+            <span>For general citations of the PATMOS-x/AVHRR product please use the following reference:</span>
+            <button class="modal-close-btn" onclick="closeCiteModal()" aria-label="Close"><i class="ti ti-x"></i></button>
+        </div>
+        
+        <p class="modal-citation-txt" id="cite-modal-txt"></p>
+        <button class="modal-copy-btn" id="cite-copy-btn" onclick="copyCitation()">
+            <i class="ti ti-copy"></i> Copy Citation
+        </button>
     </div>
-    </body>
+</div>
+
+</body>
 
 
-    <script>
+<script>
 
-    // Timeline  ───────────────────────────────────────────────────────────────────────
+// Timeline  ───────────────────────────────────────────────────────────────────────
 
-    function showTimeline() {
-        document.getElementById('timeline-panel').style.display = 'block';
-        document.getElementById('plot-panel').style.display = 'none';
-    }
+function showTimeline() {
+    document.getElementById('timeline-panel').style.display = 'block';
+    document.getElementById('plot-panel').style.display = 'none';
+}
 
-    function hideTimeline() {
-        document.getElementById('timeline-panel').style.display = 'none';
-        document.getElementById('plot-panel').style.display = 'flex';
-    }
+function hideTimeline() {
+    document.getElementById('timeline-panel').style.display = 'none';
+    document.getElementById('plot-panel').style.display = 'flex';
+}
 
-    // select all / clear ──────────────────────────────────────────────────────────────
+// select all / clear ──────────────────────────────────────────────────────────────
 
-    function selectAllPlatforms() {
-        const listId = currentLvl === 'l2bc' ? '#l2bc-platform-list' : '#l3-platform-list';
-        document.querySelectorAll(`${listId} input`).forEach(cb => cb.checked = true);
-    }
+function selectAllPlatforms() {
+    const listId = currentLvl === 'l2bc' ? '#l2bc-platform-list' : '#l3-platform-list';
+    document.querySelectorAll(`${listId} input`).forEach(cb => cb.checked = true);
+}
 
-    function clearAllPlatforms() {
-        const listId = currentLvl === 'l2bc' ? '#l2bc-platform-list' : '#l3-platform-list';
-        document.querySelectorAll(`${listId} input`).forEach(cb => cb.checked = false);
-    }
+function clearAllPlatforms() {
+    const listId = currentLvl === 'l2bc' ? '#l2bc-platform-list' : '#l3-platform-list';
+    document.querySelectorAll(`${listId} input`).forEach(cb => cb.checked = false);
+}
 
 
-    // Single-select chip functionality ────────────────────────────────────────────────
-    function setChip(chp) {
-        chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-        chp.classList.add("active");
-    }
+// Single-select chip functionality ────────────────────────────────────────────────
+function setChip(chp) {
+    chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chp.classList.add("active");
+}
 
-    function setResChip(chp, res) {
-        chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-        chp.classList.add("active");
+function setResChip(chp, res) {
+    chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chp.classList.add("active");
 
-        const nodeChips = document.querySelectorAll("#node-chips .chip");
-    }
+    const nodeChips = document.querySelectorAll("#node-chips .chip");
+}
 
-    function setCldTypeChip(chp, type) {
-        chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
-        chp.classList.add("active");
-        document.getElementById('l3-cld-phase-options').style.display = type === 'phase' ? 'block' : 'none';
-    }
+function setCldTypeChip(chp, type) {
+    chp.closest(".chips").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chp.classList.add("active");
+    document.getElementById('l3-cld-phase-options').style.display = type === 'phase' ? 'block' : 'none';
+}
 
-    let currentLvl = 'l3';
-    function setTab(tab, level) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
+let currentLvl = 'l3';
+function setTab(tab, level) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
 
-        document.getElementById('sidebar-l2bc').style.display = level === 'l2bc' ? '' : 'none';
-        document.getElementById('sidebar-l3').style.display  = level === 'l3' ? '' : 'none';
+    document.getElementById('sidebar-l2bc').style.display = level === 'l2bc' ? '' : 'none';
+    document.getElementById('sidebar-l3').style.display  = level === 'l3' ? '' : 'none';
 
-        currentLvl = level;
-    }
+    currentLvl = level;
+}
 
-    function toggleBorder(chp, rerenderFunc) {
-        chp.classList.toggle('active');
-        rerenderFunc();
-    }
+function toggleBorder(chp, rerenderFunc) {
+    chp.classList.toggle('active');
+    rerenderFunc();
+}
 
-    document.querySelectorAll('.cmap-swatch').forEach(swatch => {
-        swatch.addEventListener('click', () => {
-            const container = swatch.closest('.plot-settings');
-            container.querySelectorAll('.cmap-swatch').forEach(s => {
-                s.classList.remove('active');
-                s.style.border = 'none';
-            });
-            swatch.classList.add('active');
-            swatch.style.border = '2px solid var(--navy)';
-
-            if (container.id === 'l3-meanmap-settings') rerenderMeanmap();
-            if (container.id === 'l3-trendmap-settings') rerenderTrendmap();
+document.querySelectorAll('.cmap-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+        const container = swatch.closest('.plot-settings');
+        container.querySelectorAll('.cmap-swatch').forEach(s => {
+            s.classList.remove('active');
+            s.style.border = 'none';
         });
-    }); 
-    
-    // Bounding Box ─────────────────────────────────────────────────────────────────────
-    function onBboxChange(sel, lvl) {
-        const val = sel.value;
-        document.getElementById(`${lvl}-bbox-custom`).classList.toggle("show", val === "custom");
-    }
+        swatch.classList.add('active');
+        swatch.style.border = '2px solid var(--navy)';
 
-    function getBbox(level) {
-        const val = document.getElementById(`${level}-bbox-select`).value;
-        if (val === "custom") {
-            return {    
-                w: document.getElementById(`${level}-bbox-w`).value || -180,
-                e: document.getElementById(`${level}-bbox-e`).value || 180,
-                s: document.getElementById(`${level}-bbox-s`).value || -90,
-                n: document.getElementById(`${level}-bbox-n`).value || 90,
-            };
-        }
-        const presets = {
-            global:   { w: -180, e: 180, s: -90, n: 90 },
-            namerica: { w: -170, e:  -50, s:  10, n: 75 },
-            tropics:  { w: -180, e: 180, s: -30, n: 30 },
+        if (container.id === 'l3-meanmap-settings') rerenderMeanmap();
+        if (container.id === 'l3-trendmap-settings') rerenderTrendmap();
+    });
+}); 
+
+// Bounding Box ─────────────────────────────────────────────────────────────────────
+function onBboxChange(sel, lvl) {
+    const val = sel.value;
+    document.getElementById(`${lvl}-bbox-custom`).classList.toggle("show", val === "custom");
+}
+
+function getBbox(level) {
+    const val = document.getElementById(`${level}-bbox-select`).value;
+    if (val === "custom") {
+        return {    
+            w: document.getElementById(`${level}-bbox-w`).value || -180,
+            e: document.getElementById(`${level}-bbox-e`).value || 180,
+            s: document.getElementById(`${level}-bbox-s`).value || -90,
+            n: document.getElementById(`${level}-bbox-n`).value || 90,
         };
-        return presets[val] || presets.global;
+    }
+    const presets = {
+        global:   { w: -180, e: 180, s: -90, n: 90 },
+        namerica: { w: -170, e:  -50, s:  10, n: 75 },
+        tropics:  { w: -180, e: 180, s: -30, n: 30 },
+    };
+    return presets[val] || presets.global;
+}
+
+// date range initialization ────────────────────────────────────────────────────────
+let l3DateBounds = { min: '1980-01', max: '2026-01' };
+let l2bcDateBounds = { min: '1980-01-24', max: '2026-01-01' };
+
+async function initDateRange() {
+    try {
+        const l2bcres = await fetch('api/l2bc/date-range');
+        const l2bc = await l2bcres.json();
+        if (l2bc.max) {
+            l2bcDateBounds = l2bc;
+            const startEl = document.getElementById('l2bc-date-start');
+            const endEl = document.getElementById('l2bc-date-end');
+            startEl.min = l2bc.min;
+            startEl.max = l2bc.max;
+            endEl.min = l2bc.min;
+            endEl.max = l2bc.max;
+            endEl.value = l2bc.max;
+        }
+    } catch (err) {
+        console.warn('Could not load L2BC date range', err);
+    }
+    try {
+        const l3res = await fetch('api/l3/date-range');
+        const l3 = await l3res.json();
+        if (l3.max) {
+            l3DateBounds = l3;
+            const startEl = document.getElementById('l3-date-start');
+            const endEl = document.getElementById('l3-date-end');
+            startEl.min = l3.min;
+            startEl.max = l3.max;
+            endEl.min = l3.min;
+            endEl.max = l3.max;
+            endEl.value = l3.max;
+        }
+    } catch (err) {
+        console.warn('Could not load L3 date range', err);
+    }
+}
+
+// Getters ──────────────────────────────────────────────────────────────────────────
+
+function getL2bcProduct() {
+    return document.getElementById('l2bc-product').value;
+}
+
+function getL2bcPlatforms() {
+    return [...document.querySelectorAll('#l2bc-platform-list input:checked')].map(cb => cb.value);
+}
+
+function getL2bcNode() {
+    const active = document.querySelector('#l2bc-node-chips .chip.active');
+    if (!active) return null;
+    const t = active.textContent.trim();
+    if (t === 'Ascending') return 'asc';
+    if (t === 'Descending') return 'des';
+    if (t === 'Both') return 'both';
+    return null;
+}
+
+function getL2bcDateRange() {
+    return {
+        start: document.getElementById('l2bc-date-start').value,
+        end: document.getElementById('l2bc-date-end').value,
+    };
+}
+
+function getL3Product() {
+    return document.getElementById('l3-product').value;
+}
+
+function getL3CloudType() {
+    const active = document.querySelector('#l3-cld-type-chips .chip.active')
+    const mode = active ? active.textContent.trim().toLowerCase() : 'all';
+
+    if (mode === 'all') {
+        return { mode: 'all', phases:[] };
+    }
+    const phases = [...document.querySelectorAll('#l3-cld-phase-options input:checked')].map(cb => cb.value);
+    return { mode: 'phase', phases }; 
+}
+
+function getL3Platforms() {
+    return [...document.querySelectorAll('#l3-platform-list input:checked')].map(cb => cb.value);
+}
+
+function getL3Node() {
+    const active = document.querySelector('#l3-node-chips .chip.active');
+    if (!active) return null;
+    const t = active.textContent.trim();
+    if (t === 'Ascending') return 'asc';
+    if (t === 'Descending') return 'des';
+    if (t === 'Both') return 'both';
+    return null;
+}
+
+function getL3DateRange() {
+    return {
+        start: document.getElementById('l3-date-start').value,
+        end: document.getElementById('l3-date-end').value,
+    };
+}
+
+function getL3SurfaceType() {
+    const active = document.querySelector('#l3-surface-type-chips .chip.active');
+    if(!active) return 'all';
+    const t = active.textContent.trim();
+    if (t === 'Land') return 'land';
+    if (t === 'Ocean') return 'ocean';
+    return 'all';
+}
+
+function getL3ViewingAngle() {
+    const active = document.querySelector('#l3-viewing-angle .chip.active');
+    if (!active) return 'all';
+    return active.textContent.trim().toLowerCase().includes('nadir') ? 'nadir' : 'all';
+}
+
+function getSelectedPlotType() {
+    const checked = document.querySelector('input[name=plot-type]:checked');
+    return checked ? checked.value : null;
+}
+
+function getActiveCmap(containerId, reverseId= 'mean-cmap-reverse') {
+    const container = document.getElementById(containerId);
+    const active = container.querySelector('.cmap-swatch.active');
+    let cmap = active ? active.dataset.cmap : 'viridis';
+
+    const reverse = document.getElementById(reverseId).checked;
+    if (reverse) cmap += '_r';
+
+    return cmap;
+}
+
+function getActiveBorders(containerId = 'l3-meanmap-borders') {
+    return [...document.querySelectorAll(`#${containerId} .chip.active`)].map(c => c.textContent.trim().toLowerCase());
+}
+
+function buildTsToggles(platforms, colors) {
+    const container = document.getElementById('ts-platform-toggles');
+    container.innerHTML = platforms.map(p => `
+        <button class="ts-toggle active" data-platform="${p}"
+            onclick="toggleTsPlatform(this)"
+            style="font-size:11px; font-weight:600; padding:3px 10px; border-radius:3px;
+                border:2px solid ${colors[p]}; background:${colors[p]}; color:#fff;
+                cursor:pointer; transition:.12s;">
+            ${p}
+        </button>
+    `).join('')
+}
+function toggleTsPlatform(btn) {
+    btn.classList.toggle('active');
+    const color = tsState.colors[btn.dataset.platform];
+    if (btn.classList.contains('active')) {
+        btn.style.background = color;
+        btn.style.color = '#fff'
+    } else {
+        btn.style.background = 'transparent';
+        btn.style.color = color;
+    }
+    rerenderTimeseries();
+}
+
+// Settings Buttons ─────────────────────────────────────────────────────────────────
+function downloadPlotData(plotType) {
+    const cache_key = plotType === 'meanmap' ? meanmapState?.cache_key
+        : plotType === 'timeseries' ? tsState?.cache_key
+        : trendmapState?.cache_key;
+
+    if (!cache_key) {
+        alert('Generate a plot first');
+        return;
     }
 
-    // date range initialization ────────────────────────────────────────────────────────
-    let l3DateBounds = { min: '1980-01', max: '2026-01' };
-    let l2bcDateBounds = { min: '1980-01-24', max: '2026-01-01' };
-    
-    async function initDateRange() {
+    const params = new URLSearchParams({ cache_key, plotType });
+    const a = document.createElement('a');
+    a.href = `/api/l3/download?${params}`;
+    a.download = `patmosx_${plotType}.nc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
+
+const CITATION_TXT = "Foster, M. J., C. Phillips, A. K. Heidinger, E. E. Borbas, Y. Li, W. P. Menzel, A. Walther, and E. Weisz, 2023: PATMOS-x Version 6.0: 40 Years of Merged AVHRR and HIRS Global Cloud Data. J. Climate,  36, 1143–1160, https://doi.org/10.1175/JCLI-D-22-0147.1.";
+
+function openCiteModal() {
+    document.getElementById('cite-modal-txt').textContent = CITATION_TXT;
+    document.getElementById('cite-overlay').classList.add('show');
+}
+function closeCiteModal() {
+    document.getElementById('cite-overlay').classList.remove('show');
+}
+
+async function copyCitation() {
+    try {
+        await navigator.clipboard.writeText(CITATION_TXT);
+        const btn = document.getElementById('cite-copy-btn');
+        btn.innerHTML = '<i class="ti ti-check"></i> Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.innerHTML = '<i class="ti ti-copy"></i> Copy Citation';
+            btn.classList.remove('copied');
+        }, 1500);
+    } catch (err) {
+        console.warn('Clipboard copy failed', err);
+    }
+}
+
+// Plot Drawing ─────────────────────────────────────────────────────────────────────
+
+let meanmapState = null;
+let tsState = null;
+let trendmapState = null;
+let lastProduct = null;
+
+const PRODUCT_RANGES = {
+    cloud_fraction: [0,1],
+    cloud_top_pressure: [50,1100],
+    cloud_top_temperature: [160,320],
+    cloud_top_height: [0.075, 20],
+    cloud_optical_depth: [0,160],
+    cloud_effective_radius: [0,160],
+}
+
+let progressTimer = null;
+function startProgress(label = 'Loading...') {
+    document.getElementById('progress').style.display = 'block';
+    document.getElementById('progress-lbl').textContent = label;
+    document.getElementById('progress-pct').textContent = '0%';
+    document.querySelector('.progress-fill').classList.remove('indeterminate');
+    document.querySelector('.progress-fill').style.width = '0%'
+}
+function stopProgress() {
+    document.getElementById('progress').style.display = 'none';
+    document.querySelector('.progress-fill').classList.remove('indeterminate');
+    if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+    }
+}
+function pollProgress(jobId) {
+    if (progressTimer) clearInterval(progressTimer);
+    progressTimer = setInterval(async () => {
         try {
-            const l2bcres = await fetch('api/l2bc/date-range');
-            const l2bc = await l2bcres.json();
-            if (l2bc.max) {
-                l2bcDateBounds = l2bc;
-                const startEl = document.getElementById('l2bc-date-start');
-                const endEl = document.getElementById('l2bc-date-end');
-                startEl.min = l2bc.min;
-                startEl.max = l2bc.max;
-                endEl.min = l2bc.min;
-                endEl.max = l2bc.max;
-                endEl.value = l2bc.max;
-            }
+            const res = await fetch(`/api/l3/progress?job_id=${jobId}`);
+            const data = await res.json();
+            const pct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
+            document.querySelector('.progress-fill').style.width = `${pct}%`;
+            document.getElementById('progress-pct').textContent = `${pct}%`;
         } catch (err) {
-            console.warn('Could not load L2BC date range', err);
+            console.warn('progress poll failed', err);
         }
-        try {
-            const l3res = await fetch('api/l3/date-range');
-            const l3 = await l3res.json();
-            if (l3.max) {
-                l3DateBounds = l3;
-                const startEl = document.getElementById('l3-date-start');
-                const endEl = document.getElementById('l3-date-end');
-                startEl.min = l3.min;
-                startEl.max = l3.max;
-                endEl.min = l3.min;
-                endEl.max = l3.max;
-                endEl.value = l3.max;
-            }
-        } catch (err) {
-            console.warn('Could not load L3 date range', err);
-        }
-    }
+    }, 500);
+}
 
-    // Getters ──────────────────────────────────────────────────────────────────────────
+async function loadPlot() {
+    document.getElementById('timeline-panel').style.display = 'none';
+    document.getElementById('plot-card').style.display = 'none';
+    document.getElementById('empty-main').style.display = 'none';
+    document.getElementById('plot-area').innerHTML = '';
 
-    function getL2bcProduct() {
-        return document.getElementById('l2bc-product').value;
-    }
+    const jobId = crypto.randomUUID();
+    startProgress('Computing');
+    pollProgress(jobId);
 
-    function getL2bcPlatforms() {
-        return [...document.querySelectorAll('#l2bc-platform-list input:checked')].map(cb => cb.value);
-    }
+    const pill = document.getElementById('status-pill');
+    pill.textContent = 'Running'
+    pill.className = 'status-pill running';
 
-    function getL2bcNode() {
-        const active = document.querySelector('#l2bc-node-chips .chip.active');
-        if (!active) return null;
-        const t = active.textContent.trim();
-        if (t === 'Ascending') return 'asc';
-        if (t === 'Descending') return 'des';
-        if (t === 'Both') return 'both';
-        return null;
-    }
+    let url;
+    if (currentLvl === 'l2bc') {
+        const platform = getL2bcPlatforms();
+        const product = getL2bcProduct();
+        const node = getL2bcNode();
+        const { start, end } = getL2bcDateRange();
+        if (!product) { alert('Select a product.'); resetPill(); return; }
+        if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
+        if (!node) { alert('Select a node for L2BC.'); resetPill(); return; }
+        const bbox = getBbox('l2bc');
+        const params = new URLSearchParams({ product, platform, node, start, end, ...bbox, job_id: jobId });
+        url = `/api/l2bc/generate?${params}`;
+    } else {
+        const product = getL3Product();
+        if (!product) { alert('Select a product.'); resetPill(); return; }
 
-    function getL2bcDateRange() {
-        return {
-            start: document.getElementById('l2bc-date-start').value,
-            end: document.getElementById('l2bc-date-end').value,
-        };
-    }
-
-    function getL3Product() {
-        return document.getElementById('l3-product').value;
-    }
-
-    function getL3CloudType() {
-        const active = document.querySelector('#l3-cld-type-chips .chip.active')
-        const mode = active ? active.textContent.trim().toLowerCase() : 'all';
-
-        if (mode === 'all') {
-            return { mode: 'all', phases:[] };
-        }
-        const phases = [...document.querySelectorAll('#l3-cld-phase-options input:checked')].map(cb => cb.value);
-        return { mode: 'phase', phases }; 
-    }
-
-    function getL3Platforms() {
-        return [...document.querySelectorAll('#l3-platform-list input:checked')].map(cb => cb.value);
-    }
-
-    function getL3Node() {
-        const active = document.querySelector('#l3-node-chips .chip.active');
-        if (!active) return null;
-        const t = active.textContent.trim();
-        if (t === 'Ascending') return 'asc';
-        if (t === 'Descending') return 'des';
-        if (t === 'Both') return 'both';
-        return null;
-    }
-
-    function getL3DateRange() {
-        return {
-            start: document.getElementById('l3-date-start').value,
-            end: document.getElementById('l3-date-end').value,
-        };
-    }
-
-    function getL3SurfaceType() {
-        const active = document.querySelector('#l3-surface-type-chips .chip.active');
-        if(!active) return 'all';
-        const t = active.textContent.trim();
-        if (t === 'Land') return 'land';
-        if (t === 'Ocean') return 'ocean';
-        return 'all';
-    }
-
-    function getL3ViewingAngle() {
-        const active = document.querySelector('#l3-viewing-angle .chip.active');
-        if (!active) return 'all';
-        return active.textContent.trim().toLowerCase().includes('nadir') ? 'nadir' : 'all';
-    }
-
-    function getSelectedPlotType() {
-        const checked = document.querySelector('input[name=plot-type]:checked');
-        return checked ? checked.value : null;
-    }
-
-    function getActiveCmap(containerId, reverseId= 'mean-cmap-reverse') {
-        const container = document.getElementById(containerId);
-        const active = container.querySelector('.cmap-swatch.active');
-        let cmap = active ? active.dataset.cmap : 'viridis';
-
-        const reverse = document.getElementById(reverseId).checked;
-        if (reverse) cmap += '_r';
-
-        return cmap;
-    }
-
-    function getActiveBorders(containerId = 'l3-meanmap-borders') {
-        return [...document.querySelectorAll(`#${containerId} .chip.active`)].map(c => c.textContent.trim().toLowerCase());
-    }
-
-    function buildTsToggles(platforms, colors) {
-        const container = document.getElementById('ts-platform-toggles');
-        container.innerHTML = platforms.map(p => `
-            <button class="ts-toggle active" data-platform="${p}"
-                onclick="toggleTsPlatform(this)"
-                style="font-size:11px; font-weight:600; padding:3px 10px; border-radius:3px;
-                   border:2px solid ${colors[p]}; background:${colors[p]}; color:#fff;
-                   cursor:pointer; transition:.12s;">
-                ${p}
-            </button>
-        `).join('')
-    }
-    function toggleTsPlatform(btn) {
-        btn.classList.toggle('active');
-        const color = tsState.colors[btn.dataset.platform];
-        if (btn.classList.contains('active')) {
-            btn.style.background = color;
-            btn.style.color = '#fff'
-        } else {
-            btn.style.background = 'transparent';
-            btn.style.color = color;
-        }
-        rerenderTimeseries();
-    }
-
-    function downloadPlotData(plotType) {
-        const cache_key = plotType === 'meanmap' ? meanmapState?.cache_key
-            : plotType === 'timeseries' ? tsState?.cache_key
-            : trendmapState?.cache_key;
-
-        if (!cache_key) {
-            alert('Generate a plot first');
+        const { mode: cloudMode, phases: cloudPhases } = getL3CloudType();
+        if (cloudMode === 'phase' && cloudPhases.length === 0) {
+            alert('Select at least one cloud phase.');
+            resetPill();
             return;
         }
 
-        const params = new URLSearchParams({ cache_key, plotType });
-        const a = document.createElement('a');
-        a.href = `/api/l3/download?${params}`;
-        a.download = `patmosx_${plotType}.nc`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
+        const platform = getL3Platforms().join(',');
+        if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
 
+        const node = getL3Node();
+        if (!node) { alert('Select a node for L3.'); resetPill(); return; }
 
-    // Plot Drawing ─────────────────────────────────────────────────────────────────────
-
-    let meanmapState = null;
-    let tsState = null;
-    let trendmapState = null;
-    let lastProduct = null;
-
-    const PRODUCT_RANGES = {
-        cloud_fraction: [0,1],
-        cloud_top_pressure: [50,1100],
-        cloud_top_temperature: [160,320],
-        cloud_top_height: [0.075, 20],
-        cloud_optical_depth: [0,160],
-        cloud_effective_radius: [0,160],
-    }
-
-    let progressTimer = null;
-    function startProgress(label = 'Loading...') {
-        document.getElementById('progress').style.display = 'block';
-        document.getElementById('progress-lbl').textContent = label;
-        document.getElementById('progress-pct').textContent = '0%';
-        document.querySelector('.progress-fill').classList.remove('indeterminate');
-        document.querySelector('.progress-fill').style.width = '0%'
-    }
-    function stopProgress() {
-        document.getElementById('progress').style.display = 'none';
-        document.querySelector('.progress-fill').classList.remove('indeterminate');
-        if (progressTimer) {
-            clearInterval(progressTimer);
-            progressTimer = null;
-        }
-    }
-    function pollProgress(jobId) {
-        if (progressTimer) clearInterval(progressTimer);
-        progressTimer = setInterval(async () => {
-            try {
-                const res = await fetch(`/api/l3/progress?job_id=${jobId}`);
-                const data = await res.json();
-                const pct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
-                document.querySelector('.progress-fill').style.width = `${pct}%`;
-                document.getElementById('progress-pct').textContent = `${pct}%`;
-            } catch (err) {
-                console.warn('progress poll failed', err);
-            }
-        }, 500);
-    }
-
-    async function loadPlot() {
-        document.getElementById('timeline-panel').style.display = 'none';
-        document.getElementById('plot-card').style.display = 'none';
-        document.getElementById('empty-main').style.display = 'none';
-        document.getElementById('plot-area').innerHTML = '';
-
-        const jobId = crypto.randomUUID();
-        startProgress('Computing');
-        pollProgress(jobId);
-
-        const pill = document.getElementById('status-pill');
-        pill.textContent = 'Running'
-        pill.className = 'status-pill running';
-
-        let url;
-        if (currentLvl === 'l2bc') {
-            const platform = getL2bcPlatforms();
-            const product = getL2bcProduct();
-            const node = getL2bcNode();
-            const { start, end } = getL2bcDateRange();
-            if (!product) { alert('Select a product.'); resetPill(); return; }
-            if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
-            if (!node) { alert('Select a node for L2BC.'); resetPill(); return; }
-            const bbox = getBbox('l2bc');
-            const params = new URLSearchParams({ product, platform, node, start, end, ...bbox, job_id: jobId });
-            url = `/api/l2bc/generate?${params}`;
+        const angle = getL3ViewingAngle();
+        const { start, end } = getL3DateRange();
+        const bbox = getBbox('l3');
+        const surface = getL3SurfaceType();
+        // const features = getActiveBorders().join(',');
+        
+        const plotType = getSelectedPlotType();
+        let cmap, min, max, features;
+        if (plotType === 'trendmap') {
+            cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse')
+            min = document.getElementById('trend-colorbar-min').value;
+            max = document.getElementById('trend-colorbar-max').value;
+            features = getActiveBorders('l3-trendmap-borders').join(',');
         } else {
-            const product = getL3Product();
-            if (!product) { alert('Select a product.'); resetPill(); return; }
-
-            const { mode: cloudMode, phases: cloudPhases } = getL3CloudType();
-            if (cloudMode === 'phase' && cloudPhases.length === 0) {
-                alert('Select at least one cloud phase.');
-                resetPill();
-                return;
+            if (product !== lastProduct){
+                const [defMin, defMax] = PRODUCT_RANGES[product] || [0,1];
+                document.getElementById('mean-colorbar-min').value = defMin;
+                document.getElementById('mean-colorbar-max').value = defMax;
+                document.getElementById('mean-colorbar-min').min = defMin;
+                document.getElementById('mean-colorbar-max').max = defMax;
+                lastProduct = product;
             }
 
-            const platform = getL3Platforms().join(',');
-            if (!platform.length) { alert('Select at least one satellite.'); resetPill(); return; }
+            cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse')
+            min = document.getElementById('mean-colorbar-min').valueAsNumber;
+            max = document.getElementById('mean-colorbar-max').valueAsNumber;
+            features = getActiveBorders('l3-meanmap-borders').join(',');
 
-            const node = getL3Node();
-            if (!node) { alert('Select a node for L3.'); resetPill(); return; }
-
-            const angle = getL3ViewingAngle();
-            const { start, end } = getL3DateRange();
-            const bbox = getBbox('l3');
-            const surface = getL3SurfaceType();
-            // const features = getActiveBorders().join(',');
             
-            const plotType = getSelectedPlotType();
-            let cmap, min, max, features;
-            if (plotType === 'trendmap') {
-                cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse')
-                min = document.getElementById('trend-colorbar-min').valueAsNumber;
-                max = document.getElementById('trend-colorbar-max').valueAsNumber;
-                features = getActiveBorders('l3-trendmap-borders').join(',');
-            } else {
-                if (product !== lastProduct){
-                    const [defMin, defMax] = PRODUCT_RANGES[product] || [0,1];
-                    document.getElementById('mean-colorbar-min').value = defMin;
-                    document.getElementById('mean-colorbar-max').value = defMax;
-                    document.getElementById('mean-colorbar-min').min = defMin;
-                    document.getElementById('mean-colorbar-max').max = defMax;
-                    lastProduct = product;
-                }
-
-                cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse')
-                min = document.getElementById('mean-colorbar-min').valueAsNumber;
-                max = document.getElementById('mean-colorbar-max').valueAsNumber;
-                features = getActiveBorders('l3-meanmap-borders').join(',');
-
-                
-            }
-
-            const params = new URLSearchParams({ product, cloud_mode:cloudMode, cloud_phases:cloudPhases.join(','), platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap, job_id: jobId });
-            url = `/api/l3/generate?${params}`;
         }
 
-        try {
-            const res = await fetch(url);
-            const data = await res.json();
-            stopProgress();
-            if (data.error) {
-                alert(data.error);
-                resetPill();
-                document.getElementById('empty-main').style.display = 'flex';
-                return;
-            }
-            pill.textContent = 'Done'; 
-            pill.className = 'status-pill done';
+        const params = new URLSearchParams({ product, cloud_mode:cloudMode, cloud_phases:cloudPhases.join(','), platform, node, start, end, ...bbox, surface, angle, plotType, features, min, max, cmap, job_id: jobId });
+        url = `/api/l3/generate?${params}`;
+    }
 
-            document.getElementById('plot-card').style.display = 'grid';
-            if (data.plot_type === 'meanmap') {
-                document.getElementById('l3-meanmap-settings').style.display = 'flex';
-                document.getElementById('l3-timeseries-settings').style.display = 'none';
-                document.getElementById('l3-trendmap-settings').style.display = 'none';
-                document.getElementById('plot-overall').style.display = 'none';
-                document.getElementById('plot-monthly').style.display = 'none';
-                meanmapState = { cache_key: data.cache_key };
-                document.getElementById('plot-area').innerHTML = 
-                    `<img src="${data.img}" style="max-width:100%; display:block;" />`;
-                resetPlotSettings();
-            } 
-            if (data.plot_type === 'timeseries') {
-                document.getElementById('l3-meanmap-settings').style.display = 'none';
-                document.getElementById('l3-timeseries-settings').style.display = 'flex';
-                document.getElementById('l3-trendmap-settings').style.display = 'none';
-                document.getElementById('plot-monthly').style.display = 'flex';
-                document.getElementById('plot-overall').style.display = 'flex';
-                tsState = { cache_key: data.cache_key, platforms: data.platforms, colors: data.colors, show_trend: true, };
-                setTsPlots(data);
-                resetPlotSettings();
-                buildTsToggles(data.platforms, data.colors);
-            }
-            if (data.plot_type === 'trendmap') {
-                document.getElementById('l3-meanmap-settings').style.display = 'none';
-                document.getElementById('l3-timeseries-settings').style.display = 'none';
-                document.getElementById('l3-trendmap-settings').style.display = 'flex';
-                document.getElementById('plot-overall').style.display = 'none';
-                document.getElementById('plot-monthly').style.display = 'none';
-                trendmapState = { cache_key: data.cache_key };
-                document.getElementById('plot-area').innerHTML = 
-                    `<img src="${data.img}" style="max-width:100%; display:block;" />`;
-                resetPlotSettings();
-            }
-            
-        } catch (err) {
-            stopProgress();
-            console.error(err);
-            alert('Server error - check the terminal.');
-            resetPill();
-        }
-    } 
-
-    // Resetting ────────────────────────────────────────────────────────────────────────
-    function resetPill() {
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
         stopProgress();
-        document.getElementById('progress').style.display = 'none';
-        document.getElementById('status-pill').textContent = 'Idle';
-        document.getElementById('status-pill').className = 'status-pill';
-        document.getElementById('empty-main').style.display = 'flex';
-    }
+        if (data.error) {
+            alert(data.error);
+            resetPill();
+            document.getElementById('empty-main').style.display = 'flex';
+            return;
+        }
+        pill.textContent = 'Done'; 
+        pill.className = 'status-pill done';
 
-    function resetAll() {
-        // Product
-        document.getElementById('l2bc-product').value = '';
-        document.getElementById('l3-product').value = '';
-
-        // Cloud Type
-        resetChipGroup('#l3-cld-type-chips', 'All');
-        document.getElementById('l3-cld-phase-options').style.display = 'none';
-        document.querySelectorAll('#l3-cld-phase-options input').forEach(cb => {
-            cb.checked = cb.value === 'water';
-        });
-
-        // Platform
-        document.querySelectorAll('#l2bc-platform-list input').forEach(cb => cb.checked = false);
-        document.querySelectorAll('#l3-platform-list input').forEach(cb => cb.checked = false);
-
-        // Node
-        resetChipGroup('#l2bc-node-chips', 'Both');
-        resetChipGroup('#l3-node-chips', 'Both');
-
-        //Viewing Angle
-        resetChipGroup('#l3-viewing-angle', 'All Viewing Angles');
-
-        // Date Range
-        document.getElementById('l2bc-date-start').value = l2bcDateBounds.min;
-        document.getElementById('l2bc-date-end').value = l2bcDateBounds.max;
-        document.getElementById('l3-date-start').value = l3DateBounds.min;
-        document.getElementById('l3-date-end').value = l3DateBounds.max;
-
-        // Region
-        document.getElementById('l2bc-bbox-select').value = 'global';
-        document.getElementById('l3-bbox-select').value = 'global';
-        document.getElementById('l2bc-bbox-custom').classList.remove('show');
-        document.getElementById('l3-bbox-custom').classList.remove('show');
-        ['w', 'e', 's', 'n'].forEach(dir => {
-            document.getElementById(`l2bc-bbox-${dir}`).value = '';
-            document.getElementById(`l3-bbox-${dir}`).value = '';
-        });
-
-        // Surface Type
-        resetChipGroup('#l3-surface-type-chips', 'All');
+        document.getElementById('plot-card').style.display = 'grid';
+        if (data.plot_type === 'meanmap') {
+            document.getElementById('l3-meanmap-settings').style.display = 'flex';
+            document.getElementById('l3-timeseries-settings').style.display = 'none';
+            document.getElementById('l3-trendmap-settings').style.display = 'none';
+            document.getElementById('plot-overall').style.display = 'none';
+            document.getElementById('plot-monthly').style.display = 'none';
+            meanmapState = { cache_key: data.cache_key };
+            document.getElementById('plot-area').innerHTML = 
+                `<img src="${data.img}" style="width:100%; display:block;" />`;
+            resetPlotSettings();
+        } 
+        if (data.plot_type === 'timeseries') {
+            document.getElementById('l3-meanmap-settings').style.display = 'none';
+            document.getElementById('l3-timeseries-settings').style.display = 'flex';
+            document.getElementById('l3-trendmap-settings').style.display = 'none';
+            document.getElementById('plot-monthly').style.display = 'flex';
+            document.getElementById('plot-overall').style.display = 'flex';
+            tsState = { cache_key: data.cache_key, platforms: data.platforms, colors: data.colors, show_trend: true, };
+            setTsPlots(data);
+            resetPlotSettings();
+            buildTsToggles(data.platforms, data.colors);
+        }
+        if (data.plot_type === 'trendmap') {
+            document.getElementById('l3-meanmap-settings').style.display = 'none';
+            document.getElementById('l3-timeseries-settings').style.display = 'none';
+            document.getElementById('l3-trendmap-settings').style.display = 'flex';
+            document.getElementById('plot-overall').style.display = 'none';
+            document.getElementById('plot-monthly').style.display = 'none';
+            trendmapState = { cache_key: data.cache_key };
+            document.getElementById('plot-area').innerHTML = 
+                `<img src="${data.img}" style="width:100%; display:block;" />`;
+            resetPlotSettings();
+        }
         
-        // Plot
-        const meanmapRadio = document.querySelector('input[name="plot-type"][value="meanmap"]');
-        if (meanmapRadio) meanmapRadio.checked = true;
-
-        document.getElementById('plot-card').style.display = 'none';
-        document.getElementById('empty-main').style.display = 'flex';
-        document.getElementById('plot-area').innerHTML = '';
-        document.getElementById('plot-overall').innerHTML = '';
-        document.getElementById('plot-monthly').innerHTML = '';
-        
-        meanmapState = null;
-        tsState  = null;
-        trendmapState = null;
-        lastProduct = null;
-
-        resetPlotSettings();
+    } catch (err) {
+        stopProgress();
+        console.error(err);
+        alert('Server error - check the terminal.');
+        resetPill();
     }
+} 
 
-    // resets mean map settings
-    function resetPlotSettings() {
-        document.querySelectorAll('#l3-meanmap-settings .cmap-swatch')
-            .forEach(s => {
-                s.classList.remove('active');
-                s.style.border = 'none';
-            });
+// Resetting ────────────────────────────────────────────────────────────────────────
+function resetPill() {
+    stopProgress();
+    document.getElementById('progress').style.display = 'none';
+    document.getElementById('status-pill').textContent = 'Idle';
+    document.getElementById('status-pill').className = 'status-pill';
+    document.getElementById('empty-main').style.display = 'flex';
+}
 
-        const viridis = document.querySelector(
-            '#l3-meanmap-settings .cmap-swatch[data-cmap="viridis"]'
-        );
-        viridis.classList.add('active');
-        viridis.style.border = '2px solid var(--navy)';
+function resetAll() {
+    // Product
+    document.getElementById('l2bc-product').value = '';
+    document.getElementById('l3-product').value = '';
 
-        document.getElementById('mean-cmap-reverse').checked = false;
+    // Cloud Type
+    resetChipGroup('#l3-cld-type-chips', 'All');
+    document.getElementById('l3-cld-phase-options').style.display = 'none';
+    document.querySelectorAll('#l3-cld-phase-options input').forEach(cb => {
+        cb.checked = cb.value === 'water';
+    });
 
-        document.querySelectorAll('#l3-meanmap-borders .chip')
-            .forEach(chip => chip.classList.remove('active'));
-        document.querySelector(
-            '#l3-meanmap-borders .chip'
-        ).classList.add('active');
-        
-        // reset timeseries settings
-        document.getElementById('toggle-trend-mean').checked = true;
-        document.getElementById('toggle-trend-overall').checked = true;
-        document.getElementById('toggle-trend-monthly').checked = true;
-        ['mean-min','mean-max','overall-min','overall-max','monthly-min','monthly-max'].forEach(id => {
-            document.getElementById(id).value = '';
-        });
-        document.getElementById('ts-platform-toggles').innerHTML = '';
+    // Platform
+    document.querySelectorAll('#l2bc-platform-list input').forEach(cb => cb.checked = false);
+    document.querySelectorAll('#l3-platform-list input').forEach(cb => cb.checked = false);
 
-        // reset trend map settings
-        document.querySelectorAll('#l3-trendmap-settings .cmap-swatch')
-            .forEach(s => {
-                s.classList.remove('active');
-                s.style.border = 'none';
-            });
+    // Node
+    resetChipGroup('#l2bc-node-chips', 'Both');
+    resetChipGroup('#l3-node-chips', 'Both');
 
-        const bwr = document.querySelector(
-            '#l3-trendmap-settings .cmap-swatch[data-cmap="bwr"]'
-        );
-        bwr.classList.add('active');
-        bwr.style.border = '2px solid var(--navy)';
+    //Viewing Angle
+    resetChipGroup('#l3-viewing-angle', 'All Viewing Angles');
 
-        document.getElementById('trend-cmap-reverse').checked = false;
+    // Date Range
+    document.getElementById('l2bc-date-start').value = l2bcDateBounds.min;
+    document.getElementById('l2bc-date-end').value = l2bcDateBounds.max;
+    document.getElementById('l3-date-start').value = l3DateBounds.min;
+    document.getElementById('l3-date-end').value = l3DateBounds.max;
 
-        document.getElementById('trend-colorbar-min').value = '';
-        document.getElementById('trend-colorbar-max').value = '';
+    // Region
+    document.getElementById('l2bc-bbox-select').value = 'global';
+    document.getElementById('l3-bbox-select').value = 'global';
+    document.getElementById('l2bc-bbox-custom').classList.remove('show');
+    document.getElementById('l3-bbox-custom').classList.remove('show');
+    ['w', 'e', 's', 'n'].forEach(dir => {
+        document.getElementById(`l2bc-bbox-${dir}`).value = '';
+        document.getElementById(`l3-bbox-${dir}`).value = '';
+    });
 
-        document.querySelectorAll('#l3-trendmap-borders .chip')
-            .forEach(chip => chip.classList.remove('active'));
-        document.querySelector(
-            '#l3-trendmap-borders .chip'
-        ).classList.add('active');
-    }
-
-    // set default chip active, clear the rest
-    function resetChipGroup(containerSelector, defaultLabel) {
-        const container = document.querySelector(containerSelector);
-        if (!container) return;
-        container.querySelectorAll('.chip').forEach(c => {
-            c.classList.toggle('active', c.textContent.trim() === defaultLabel);
-        });
-    }
-
-    // Rerendering ──────────────────────────────────────────────────────────────────────
-    async function rerenderMeanmap() {
-        if (!meanmapState) return;
-
-        const cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse');
-        const min = document.getElementById('mean-colorbar-min').value;
-        const max = document.getElementById('mean-colorbar-max').value;
-        const features = getActiveBorders('l3-meanmap-borders');
-
-        const params = new URLSearchParams({
-            cache_key: meanmapState.cache_key,
-            cmap, min, max,
-            features: features.join(',')
-        });
-
-        const res = await fetch(`/api/l3/rerender-meanmap?${params}`);
-        const data = await res.json();
-        if (data.error) { console.warn(data.error); return; }
-
-        document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
-    }
-
-    function getRangeValue(id) {
-        const el = document.getElementById(id);
-        return el.value === '' ? '' : el.valueAsNumber;
-    }
-
-    async function rerenderTimeseries() {
-        if (!tsState) return;
-        const active = [...document.querySelectorAll('.ts-toggle.active')].map(b => b.dataset.platform);
-
-        const params = new URLSearchParams({
-            cache_key: tsState.cache_key,
-            platforms: active.join(','),
-            show_trend_mean: document.getElementById('toggle-trend-mean').checked,
-            show_trend_overall: document.getElementById('toggle-trend-overall').checked,
-            show_trend_monthly: document.getElementById('toggle-trend-monthly').checked,
-            mean_min: getRangeValue('mean-min'),
-            mean_max: getRangeValue('mean-max'),
-            overall_min: getRangeValue('overall-min'),
-            overall_max: getRangeValue('overall-max'),
-            monthly_min: getRangeValue('monthly-min'),
-            monthly_max: getRangeValue('monthly-max'),
-        });
-        const res = await fetch(`/api/l3/rerender-timeseries?${params}`);
-        const data = await res.json();
-        if (data.error) { console.warn(data.error); return; }
-        setTsPlots(data);
-    }
-
-    function setTsPlots(data) {
-        document.getElementById('plot-area').innerHTML = `<img src="${data.img_mean}" style="max-width:100%; display:block;" />`;
-        document.getElementById('plot-overall').innerHTML = `<img src="${data.img_overall}" style="max-width:100%; display:block;" />`;
-        document.getElementById('plot-monthly').innerHTML = `<img src="${data.img_monthly}" style="max-width:100%; display:block;" />`;
-    }
-
-    async function rerenderTrendmap() {
-        if (!trendmapState) return;
-
-        const cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse');
-        const min = document.getElementById('trend-colorbar-min').value;
-        const max = document.getElementById('trend-colorbar-max').value;
-        const features = getActiveBorders('l3-trendmap-borders');
-
-        const params = new URLSearchParams({
-            cache_key: trendmapState.cache_key,
-            cmap, min, max,
-            features: features.join(',')
-        });
-
-        const res = await fetch(`/api/l3/rerender-trendmap?${params}`);
-        const data = await res.json();
-        if (data.error) { console.warn(data.error); return; }
-
-        document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
-    }
+    // Surface Type
+    resetChipGroup('#l3-surface-type-chips', 'All');
     
-    initDateRange();
-    </script>
+    // Plot
+    const meanmapRadio = document.querySelector('input[name="plot-type"][value="meanmap"]');
+    if (meanmapRadio) meanmapRadio.checked = true;
 
-    </html>
+    document.getElementById('plot-card').style.display = 'none';
+    document.getElementById('empty-main').style.display = 'flex';
+    document.getElementById('plot-area').innerHTML = '';
+    document.getElementById('plot-overall').innerHTML = '';
+    document.getElementById('plot-monthly').innerHTML = '';
+    
+    meanmapState = null;
+    tsState  = null;
+    trendmapState = null;
+    lastProduct = null;
+
+    resetPlotSettings();
+}
+
+// resets mean map settings
+function resetPlotSettings() {
+    document.querySelectorAll('#l3-meanmap-settings .cmap-swatch')
+        .forEach(s => {
+            s.classList.remove('active');
+            s.style.border = 'none';
+        });
+
+    const viridis = document.querySelector(
+        '#l3-meanmap-settings .cmap-swatch[data-cmap="viridis"]'
+    );
+    viridis.classList.add('active');
+    viridis.style.border = '2px solid var(--navy)';
+
+    document.getElementById('mean-cmap-reverse').checked = false;
+
+    document.querySelectorAll('#l3-meanmap-borders .chip')
+        .forEach(chip => chip.classList.remove('active'));
+    document.querySelector(
+        '#l3-meanmap-borders .chip'
+    ).classList.add('active');
+    
+    // reset timeseries settings
+    document.getElementById('toggle-trend-mean').checked = true;
+    document.getElementById('toggle-trend-overall').checked = true;
+    document.getElementById('toggle-trend-monthly').checked = true;
+    ['mean-min','mean-max','overall-min','overall-max','monthly-min','monthly-max'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    document.getElementById('ts-platform-toggles').innerHTML = '';
+
+    // reset trend map settings
+    document.querySelectorAll('#l3-trendmap-settings .cmap-swatch')
+        .forEach(s => {
+            s.classList.remove('active');
+            s.style.border = 'none';
+        });
+
+    const bwr = document.querySelector(
+        '#l3-trendmap-settings .cmap-swatch[data-cmap="bwr"]'
+    );
+    bwr.classList.add('active');
+    bwr.style.border = '2px solid var(--navy)';
+
+    document.getElementById('trend-cmap-reverse').checked = false;
+
+    document.getElementById('trend-colorbar-min').value = '';
+    document.getElementById('trend-colorbar-max').value = '';
+
+    document.querySelectorAll('#l3-trendmap-borders .chip')
+        .forEach(chip => chip.classList.remove('active'));
+    document.querySelector(
+        '#l3-trendmap-borders .chip'
+    ).classList.add('active');
+}
+
+// set default chip active, clear the rest
+function resetChipGroup(containerSelector, defaultLabel) {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    container.querySelectorAll('.chip').forEach(c => {
+        c.classList.toggle('active', c.textContent.trim() === defaultLabel);
+    });
+}
+
+// Rerendering ──────────────────────────────────────────────────────────────────────
+async function rerenderMeanmap() {
+    if (!meanmapState) return;
+
+    const cmap = getActiveCmap('l3-meanmap-settings', 'mean-cmap-reverse');
+    const min = document.getElementById('mean-colorbar-min').value;
+    const max = document.getElementById('mean-colorbar-max').value;
+    const features = getActiveBorders('l3-meanmap-borders');
+
+    const params = new URLSearchParams({
+        cache_key: meanmapState.cache_key,
+        cmap, min, max,
+        features: features.join(',')
+    });
+
+    const res = await fetch(`/api/l3/rerender-meanmap?${params}`);
+    const data = await res.json();
+    if (data.error) { console.warn(data.error); return; }
+
+    document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+}
+
+function getRangeValue(id) {
+    const el = document.getElementById(id);
+    return el.value === '' ? '' : el.valueAsNumber;
+}
+
+async function rerenderTimeseries() {
+    if (!tsState) return;
+    const active = [...document.querySelectorAll('.ts-toggle.active')].map(b => b.dataset.platform);
+
+    const params = new URLSearchParams({
+        cache_key: tsState.cache_key,
+        platforms: active.join(','),
+        show_trend_mean: document.getElementById('toggle-trend-mean').checked,
+        show_trend_overall: document.getElementById('toggle-trend-overall').checked,
+        show_trend_monthly: document.getElementById('toggle-trend-monthly').checked,
+        mean_min: getRangeValue('mean-min'),
+        mean_max: getRangeValue('mean-max'),
+        overall_min: getRangeValue('overall-min'),
+        overall_max: getRangeValue('overall-max'),
+        monthly_min: getRangeValue('monthly-min'),
+        monthly_max: getRangeValue('monthly-max'),
+    });
+    const res = await fetch(`/api/l3/rerender-timeseries?${params}`);
+    const data = await res.json();
+    if (data.error) { console.warn(data.error); return; }
+    setTsPlots(data);
+}
+
+function setTsPlots(data) {
+    document.getElementById('plot-area').innerHTML = `<img src="${data.img_mean}" style="width:100%; display:block;" />`;
+    document.getElementById('plot-overall').innerHTML = `<img src="${data.img_overall}" style="width:100%; display:block;" />`;
+    document.getElementById('plot-monthly').innerHTML = `<img src="${data.img_monthly}" style="width:100%; display:block;" />`;
+}
+
+async function rerenderTrendmap() {
+    if (!trendmapState) return;
+
+    const cmap = getActiveCmap('l3-trendmap-settings', 'trend-cmap-reverse');
+    const min = document.getElementById('trend-colorbar-min').value;
+    const max = document.getElementById('trend-colorbar-max').value;
+    const features = getActiveBorders('l3-trendmap-borders');
+
+    const params = new URLSearchParams({
+        cache_key: trendmapState.cache_key,
+        cmap, min, max,
+        features: features.join(',')
+    });
+
+    const res = await fetch(`/api/l3/rerender-trendmap?${params}`);
+    const data = await res.json();
+    if (data.error) { console.warn(data.error); return; }
+
+    document.getElementById('plot-area').innerHTML = `<img src="${data.img}" style="max-width:100%; display:block;" />`;
+}
+
+initDateRange();
+</script>
+
+</html>
