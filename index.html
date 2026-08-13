@@ -370,6 +370,22 @@
         border-color: var(--navy);
         color: var(--white);
     }
+
+    /* ── Timeline ─────────────────────────────────────────────── */
+    #timeline-panel {
+        max-height: 0; opacity: 0; overflow: hidden; margin: 0 20px; padding: 0 10px; 
+        background: var(--bg-side); border-radius: var(--radius); border:1px solid transparent;
+        transition: max-height .35s ease, opacity .25s ease, margin .35s ease,
+                padding .35s ease, border-color .35s ease;
+    }
+    #timeline-panel.open { max-height: 600px; opacity: 1; margin: 20px; padding: 10px; border-color: var(--border); }
+    .timeline-btn { transition: background .15s, color .15s, transform .1s; }
+    .timeline-btn.active {
+        background: var(--navy) !important;
+        color: var(--white) !important;
+        border-color: var(--navy) !important;
+    }
+    .timeline-btn:active { transform: scale(.96); }
 </style>
 </head>
 
@@ -428,7 +444,7 @@
         <div class="sidebar-section">
             <div class="sidebar-section-title" style="justify-content: space-between;">
                 <span style="display:flex; align-items:center; gap:6px;"><i class="ti ti-satellite"></i>Platform</span>
-                <button onclick="showTimeline()" style="font-size: 11px; color: var(--navy); background: #e8edf5; border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; font-weight: 600; text-transform:inherit;"><i class="ti ti-zoom-question"></i> timeline</button>
+                <button class="timeline-btn" onclick="toggleTimeline()" style="font-size: 11px; color: var(--navy); background: #e8edf5; border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; font-weight: 600; text-transform:inherit;"><i class="ti ti-zoom-question"></i> timeline</button>
             </div>
 
             <div class="sidebar-body">
@@ -614,7 +630,7 @@
         <div class="sidebar-section">
             <div class="sidebar-section-title" style="justify-content: space-between;">
                 <span style="display:flex; align-items:center; gap:6px;"><i class="ti ti-satellite"></i>Platform</span>
-                <button onclick="showTimeline()" style="font-size: 11px; color: var(--navy); background: #e8edf5; border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; font-weight: 600; text-transform:inherit;"><i class="ti ti-zoom-question"></i> timeline</button>
+                <button class="timeline-btn" onclick="toggleTimeline()" style="font-size: 11px; color: var(--navy); background: #e8edf5; border: 1px solid var(--border); border-radius: 3px; padding: 2px 8px; cursor: pointer; font-weight: 600; text-transform:inherit;"><i class="ti ti-zoom-question"></i> timeline</button>
             </div>
 
             <div class="sidebar-body">
@@ -798,7 +814,7 @@
             <span class="status-pill" id="status-pill">Idle</span>
         </div>
 
-        <div id="timeline-panel" style="display: none; margin: 20px; padding: 10px; background: var(--bg-side); border-radius: var(--radius); border:1px solid var(--border);">
+        <div id="timeline-panel">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 15px;">
                 <span style="font-size: 16px; font-weight: 600; color: var(--text);">Satellite Active Timelines</span>
                 <button onclick="hideTimeline()" style="font-size: 13px; color: var(--text-2); background: white; border:1px solid var(--border); border-radius:var(--radius); padding: 3px 10px; cursor: pointer;"><i class="ti ti-x"></i> Close</button>
@@ -1017,14 +1033,27 @@
 
 // Timeline  ───────────────────────────────────────────────────────────────────────
 
+function toggleTimeline() {
+    const panel = document.getElementById('timeline-panel');
+    panel.classList.contains('open') ? hideTimeline() : showTimeline();
+}
+
 function showTimeline() {
-    document.getElementById('timeline-panel').style.display = 'block';
+    document.getElementById('timeline-panel').classList.add('open');
     document.getElementById('plot-panel').style.display = 'none';
+    document.querySelectorAll('.timeline-btn').forEach(b => {
+        b.classList.add('active');
+        b.innerHTML = '<i class="ti ti-x"></i> <span>Close</span>';
+    });
 }
 
 function hideTimeline() {
-    document.getElementById('timeline-panel').style.display = 'none';
+    document.getElementById('timeline-panel').classList.remove('open');
     document.getElementById('plot-panel').style.display = 'flex';
+    document.querySelectorAll('.timeline-btn').forEach(b => {
+        b.classList.remove('active');
+        b.innerHTML = '<i class="ti ti-zoom-question"></i> <span>Timeline</span>';
+    });
 }
 
 // select all / clear ──────────────────────────────────────────────────────────────
