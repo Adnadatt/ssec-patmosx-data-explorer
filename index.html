@@ -303,6 +303,12 @@
     .empty-main h3 { font-size: 15px; font-weight: 700; color: var(--text-2); }
     .empty-main p  { font-size: 13px; color: var(--text-3); max-width: 280px; line-height: 1.6; }
 
+    #plot-card { animation: fadeUp .35s ease; }
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
     /* ── Settings ─────────────────────────────────────────────── */
     .plot-settings-btn {
         font-size:11px; font-weight:600; padding:5px 12px; border-radius:var(--radius);
@@ -313,15 +319,18 @@
 
     /* ── Citation ─────────────────────────────────────────────── */
     .modal-overlay {
-        display: none;
+        display: flex;
+        visibility: hidden;
+        pointer-events: none;
         position: fixed;
         inset: 0;
         background: rgba(0,0,0,0.45);
         align-items: center;
         justify-content: center;
         z-index: 1000;
+        transition: opacity .2s ease, visibility 0s linear .2s; opacity: 0;
     }
-    .modal-overlay.show { display: flex; }
+    .modal-overlay.show { visibility: visible; pointer-events: auto; opacity: 1; transition: opacity .2s ease, visibility 0s linear; }
     .modal-card {
         background: var(--white);
         border-radius: 8px;
@@ -329,7 +338,9 @@
         max-width: 480px;
         width: 90%;
         box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        transition: transform .2s ease, opacity .2s ease; transform: scale(.96); opacity: 0;
     }
+    .modal-overlay.show .modal-card { transform: scale(1); opacity: 1; }
     .modal-card-header {
         display: flex;
         align-items: center;
@@ -1398,7 +1409,7 @@ function pollProgress(jobId) {
 }
 
 async function loadPlot() {
-    document.getElementById('timeline-panel').style.display = 'none';
+    hideTimeline();
     document.getElementById('plot-card').style.display = 'none';
     document.getElementById('empty-main').style.display = 'none';
     document.getElementById('plot-area').innerHTML = '';
