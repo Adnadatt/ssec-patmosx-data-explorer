@@ -84,7 +84,7 @@ http://localhost:8001
     `pickle_l3.py` parses the product key from the filename itself
    (`patmosx_v06r00_METOP-A_2007_07_1deg_l3a_<key>.nc`) — the `key` your new
    `PRODUCT_META` entry uses must match that filename suffix exactly, or
-   `filter_files()` will never find any matching rows.
+   `filter_files()` will not find any matching rows.
 
 3. **Add the new cloud product option to the dropdown** in `index.html`:
 
@@ -106,7 +106,7 @@ http://localhost:8001
 
 5. **Re-run `pickle_l3.py`** (see Setup above) so the file index is updated with the new product, then restart the server.
 
-7. **Sanity check**: generate a meanmap for the new product with "All"
+6. **Sanity check**: generate a meanmap for the new product with "All"
    platforms and a short date range, and confirm the values fall in a
    physically reasonable range for that variable before trusting it.
 
