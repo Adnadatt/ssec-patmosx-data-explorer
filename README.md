@@ -62,17 +62,17 @@ http://localhost:8001
 
 1. **Add a new entry to `PRODUCT_META`** in `l3_utils.py`. The dictionary key must match the netCDF variable name inside the L3 files exactly.
 
-```python
-   PRODUCT_META = {
-       ...
-       'cloud_top_pressure': {                 # netCDF variable name
-           'units': 'km',
-           'long_name': 'Cloud Top Pressure',
-           'type': 'weighted_mean',            # 'fraction' or 'weighted_mean'
-           'counts_var': 'counts',             # 'counts_all' or 'counts'
-       },
-   }
-```
+   ```python
+      PRODUCT_META = {
+          ...
+          'cloud_top_pressure': {                 # netCDF variable name
+              'units': 'km',
+              'long_name': 'Cloud Top Pressure',
+              'type': 'weighted_mean',            # 'fraction' or 'weighted_mean'
+              'counts_var': 'counts',             # 'counts_all' or 'counts'
+          },
+      }
+   ```
    - Use `'type': 'fraction'` only for products that store raw observation
      counts (like `cloud_fraction`). Everything else — anything the L3 file
      stores as a precomputed per-bin mean plus a separate counts array —
@@ -82,27 +82,27 @@ http://localhost:8001
 
 2. **Confirm that the product's `key` matches what `pickle_l3.py` extracts.**
     `pickle_l3.py` parses the product key from the filename itself
-   (`patmosx_v06r00_METOP-A_2007_07_1deg_l3a_<key>.nc`) — the `key` your new
+   (`patmosx_v06r00_METOP-A_2007_07_1deg_l3a_<key>.nc`). The `key` your new
    `PRODUCT_META` entry uses must match that filename suffix exactly, or
    `filter_files()` will not find any matching rows.
 
 3. **Add the new cloud product option to the dropdown** in `index.html`:
 
-```html
-   <select id="l3-product">
-       ...
-       <option value="cloud_top_pressure">Cloud Top pressure</option>
-   </select>
-```
+   ```html
+      <select id="l3-product">
+          ...
+          <option value="cloud_top_pressure">Cloud Top pressure</option>
+      </select>
+   ```
 
 4. **Add default color range** to `PRODUCT_RANGES` in `index.html`'s `<script>` block. This forces the mean map colorbar to start at a sensible range instead of the previous product's leftover values:
 
-```javascript
-   const PRODUCT_RANGES = {
-       ...
-       cloud_top_pressure: [50, 1100],
-   }
-```
+   ```javascript
+      const PRODUCT_RANGES = {
+          ...
+          cloud_top_pressure: [50, 1100],
+      }
+   ```
 
 5. **Re-run `pickle_l3.py`** (see Setup above) so the file index is updated with the new product, then restart the server.
 
