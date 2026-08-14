@@ -129,9 +129,9 @@ Adding a new plot has four main components: a compute function, a render functio
    - Add a new cache dict in `load_data()` (e.g. `app.ctx.<plotname>_cache = {}`).
    - Add an `elif plot_type == '<plotname>':` branch in `l3_generate`. Check the cache, call
      `compute_<plotname>` in an executor if missing, then `render_<plotname>`, then return `sanic_json({...})`.
-   - Add a matching `/api/l3/rerender-<name>` route if the plot has re-renderable display settings
+   - Add a matching `/api/l3/rerender-<plotname>` route if the plot has re-renderable display settings
      (colormap, range, etc.) to avoid recomputing the underlying data.
-   - If the plot should support NetCDF download, add a `build_<name>_nc(cached)` function in `l3_utils.py`
+   - If the plot should support NetCDF download, add a `build_<plotname>_nc(cached)` function in `l3_utils.py`
      and an `elif` branch in `l3_download`.
 
 4. **Add the plot option to the frontend** in `index.html`:
@@ -140,7 +140,7 @@ Adding a new plot has four main components: a compute function, a render functio
    ```html
      <div class="toggle-row">
          <span class="toggle-label">Your Plot Name</span>
-         <label class="toggle"><input type="radio" name="plot-type" value="<name>"><span class="slider"></span></label>
+         <label class="toggle"><input type="radio" name="plot-type" value="<plotname>"><span class="slider"></span></label>
      </div>
    ```
    - Add a `<div class="plot-settings" id="l3-<plotname>-settings">` block for that plot's display options,
