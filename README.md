@@ -112,3 +112,44 @@ http://localhost:8001
 
 ## How to add another plot
 
+Adding a new plot has four main components: a compute function, a render function, a backend route, and the frontend
+
+1. **Write the `compute_<plotname>()` function** in `l3_utils.py`. Follow the existing pattern:
+
+   - Take `(subset, product, bbox, nodes, phases, surface, angle, progress=None)`.
+   - Call `read_l3_file(...)` per row via `bbox_indices()`.
+   - Call `progress(i+1, total)` once per file so the loading bar tracks it.
+   - Return whatever raw data your render function needs (see `compute_meanmap`/`compute_trendmap` for the pattern).
+
+2. **Write the `render_<plotname>()` function** in `l3_utils.py` that takes the computed data plus display options (cmap, min/max, features, etc.) and returns a base64 PNG via `fig_to_b64(fig)`.
+
+3. **Connect it to `l3_generate`** in `patmosxDataExplorer.py`:
+
+   - Add `'<plotname>'` to `ALLOWED_PLOT_TYPES` in the sanitization section.
+   - Add a new cache dict in `load_data()` (e.g. `app.ctx.<plotname>_cache = {}`).
+   - Add an `elif plot_type == '<plotname>':` branch in `l3_generate`. Check the cache, call
+     `compute_<plotname>` in an executor if missing, then `render_<plotname>`, then return `sanic_json({...})`.
+   - Add a matching `/api/l3/rerender-<name>` route if the plot has re-renderable display settings
+     (colormap, range, etc.) to avoid recomputing the underlying data.
+   - If the plot should support NetCDF download, add a `build_<name>_nc(cached)` function in `l3_utils.py`
+     and an `elif` branch in `l3_download`.
+
+4. **Add the plot option to the frontend** in `index.html`:
+
+   - Add a radio button in the "Plot to Generate" section:
+   ```html
+     <div class="toggle-row">
+         <span class="toggle-label">Your Plot Name</span>
+         <label class="toggle"><input type="radio" name="plot-type" value="<name>"><span class="slider"></span></label>
+     </div>
+   ```
+   - Add a `<div class="plot-settings" id="l3-<plotname>-settings">` block for that plot's display options,
+     following the meanmap/trendmap markup as a template (Download NetCDF / Cite buttons, colormap swatches, etc.).
+   - In `loadPlot()`, add a branch to build the right query params for `plotType === '<plotname>'`.
+   - In the `loadPlot()` success handler, add an `if (data.plot_type === '<plotname>')` block that shows
+     the right `.plot-settings` panel, hides the others, and stores `<plotname>State = {
+     cache_key: data.cache_key }`.
+   - Add a `rerender<Plotname>()` JS function if the plot supports re-rendering without recomputation
+     (mirrors `rerenderMeanmap`/`rerenderTrendmap`).
+   - Extend `resetPlotSettings()` to reset your new panel's controls back to defaults.
+   - If downloadable, extend `downloadPlotData()` to include `<plotname>State?.cache_key`.
